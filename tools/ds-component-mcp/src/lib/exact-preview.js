@@ -695,6 +695,42 @@ export function buildExactPreviewCode(context) {
   return null;
 }
 
+function keepReproducibleEffects(node, context) {
+  if (!node || typeof node !== 'object') return node;
+  const copy = { ...node };
+  if (Array.isArray(node.effects)) {
+    copy.effects = node.effects.filter((effect) => {
+      if (!['DROP_SHADOW', 'INNER_SHADOW'].includes(effect?.type) || !effect?.css) return false;
+      try {
+        translateShadow(context, effect.css.replace(/^inset\s+/, ''));
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  }
+  if (Array.isArray(node.children)) {
+    copy.children = node.children.map((child) => keepReproducibleEffects(child, context));
+  }
+  return copy;
+}
+
+function buildReviewPreviewCode(context) {
+  const tree = context?.figma?.blueprint?.tree;
+  if (!tree) return null;
+  const reviewContext = {
+    ...context,
+    figma: {
+      ...context.figma,
+      blueprint: {
+        ...context.figma.blueprint,
+        tree: keepReproducibleEffects(tree, context),
+      },
+    },
+  };
+  return buildGenericPreview(reviewContext);
+}
+
 function approximationWarning(context, error = null) {
   const componentName = context?.component?.title || context?.component?.name || 'ce composant';
   const detail = error?.message || 'Le blueprint Figma ne peut pas etre transforme de facon deterministe.';
@@ -727,6 +763,21 @@ export function enforceExactFigmaPreview(markdown, context) {
     }
     return { markdown: replaceJsxBlock(source, code), enforced: true, exact: true, code, warning: null };
   } catch (error) {
+    try {
+      const code = buildReviewPreviewCode(context);
+      if (code) {
+        return {
+          markdown: replaceJsxBlock(source, code),
+          enforced: true,
+          exact: false,
+          code,
+          warning: approximationWarning(context, error),
+        };
+      }
+    } catch {
+      // Keep the model output only when the Figma tree still cannot be rendered
+      // after removing effects that have no canonical token representation.
+    }
     return {
       markdown: source,
       enforced: false,

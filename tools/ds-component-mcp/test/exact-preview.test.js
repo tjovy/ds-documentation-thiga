@@ -50,7 +50,7 @@ test('loads the 24 Thiga Button combinations from Figma', () => {
 });
 
 test('loads the six Thiga Card combinations without legacy Tone/Media axes', () => {
-  const { context, output } = exact('card');
+  const { context, output, validation } = exact('card');
   assert.deepEqual(context.component.axes, {
     style: ['elevated', 'outlined'],
     state: ['default', 'hover', 'disabled'],
@@ -58,8 +58,11 @@ test('loads the six Thiga Card combinations without legacy Tone/Media axes', () 
   assert.equal(context.figma.expectedVariantCount, 6);
   assert.equal(context.figma.actualVariantCount, 6);
   assert.equal(context.figma.complete, true);
-  assert.equal(output.enforced, false);
+  assert.equal(output.enforced, true);
+  assert.equal(output.exact, false);
   assert.match(output.warning.detail, /Aucun token CSS ne correspond a la valeur Figma/);
+  assert.deepEqual(validation.checks.hardcodedColors, []);
+  assert.equal(validation.valid, true);
 });
 
 test('flags vector icons for visual review instead of inventing SVG geometry', () => {
@@ -147,10 +150,13 @@ test('returns a review warning instead of stopping on a Figma effect that cannot
   };
 
   const output = enforceExactFigmaPreview(markdown, approximateContext);
-  assert.equal(output.enforced, false);
+  const validation = validateComponentMarkdown(output.markdown, approximateContext, { allowVisualApproximation: true });
+  assert.equal(output.enforced, true);
   assert.equal(output.exact, false);
-  assert.equal(output.markdown, markdown);
+  assert.notEqual(output.markdown, markdown);
   assert.equal(output.warning.code, 'figma_preview_approximate');
   assert.match(output.warning.detail, /Effet Figma non reproductible exactement/);
   assert.equal(output.warning.suggestions.length, 4);
+  assert.deepEqual(validation.checks.hardcodedColors, []);
+  assert.equal(validation.valid, true);
 });
