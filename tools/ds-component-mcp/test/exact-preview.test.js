@@ -48,6 +48,8 @@ test('loads the 24 Thiga Button combinations from Figma', () => {
   assert.equal(output.enforced, true);
   assert.equal(output.exact, true);
   assert.equal(output.warning, null);
+  assert.match(output.code, /"label": "Nous contacter"/);
+  assert.match(output.code, />\{item.label\}<\/Button>/);
 });
 
 test('loads the six Thiga Card combinations without legacy Tone/Media axes', () => {
@@ -74,6 +76,15 @@ test('renders vector icons from the exact local Figma asset without inventing SV
   assert.equal(output.warning, null);
   assert.match(output.code, /\/assets\/figma\/icon-arrow-right\.svg/);
   assert.doesNotMatch(output.code, /<svg|<path/);
+});
+
+test('renders Check from the vector path supplied by Figma', () => {
+  const { context, output, validation } = exact('check');
+  const figmaPath = context.figma.blueprint.tree.children[0].strokeGeometry[0].path;
+  assert.equal(output.exact, true);
+  assert.match(output.code, new RegExp(figmaPath.slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(output.code, /fill="var\(--core-01-primitives-brand-wine-500\)"/);
+  assert.equal(validation.valid, true);
 });
 
 test('builds a deterministic preview for a newly discovered simple component', () => {

@@ -39,6 +39,7 @@ function loadRuntimeState(tokensOverride = null) {
   };
 }
 
+export function createMcpServer() {
 const server = new McpServer({
   name: 'ds-component-mcp',
   version: '0.1.0',
@@ -249,5 +250,10 @@ server.tool(
   }
 );
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+return server;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  const transport = new StdioServerTransport();
+  await createMcpServer().connect(transport);
+}

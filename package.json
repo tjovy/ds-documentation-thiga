@@ -26,12 +26,12 @@
     "workflow:preflight": "npm run build-css && npm run validate-css-contract && npm run test:mcp && npm run mcp:check",
     "sync-tokens": "node scripts/sync-tokens-preview.js main",
     "sync-tokens-preview": "node scripts/sync-tokens-preview.js",
-    "refresh-ds-content": "npm run sync-tokens && npm run build-css && npm run build-docs",
+    "refresh-ds-content": "npm run sync-tokens && npm run build-docs",
     "build-docs": "node scripts/generate-stories.js",
     "build-docs-preview": "npm run build-docs",
     "storybook": "node scripts/storybook-with-token-sync.js",
     "storybook-preview": "node scripts/storybook-with-token-sync.js",
-    "build-storybook": "npm run build-css && npm run build-docs && storybook build"
+    "build-storybook": "npm run build-docs && storybook build"
   },
   "dependencies": {
     "react": "^19.2.0",

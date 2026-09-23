@@ -384,6 +384,8 @@ function compactNodeTree(spec) {
     opacity: spec.opacity ?? null,
     clipsContent: spec.clipsContent ?? false,
     textStyle: spec.textStyle || null,
+    fillGeometry: ['VECTOR', 'LINE', 'BOOLEAN_OPERATION', 'POLYGON', 'STAR'].includes(spec.type) ? spec.fillGeometry || [] : [],
+    strokeGeometry: ['VECTOR', 'LINE', 'BOOLEAN_OPERATION', 'POLYGON', 'STAR'].includes(spec.type) ? spec.strokeGeometry || [] : [],
     children: (spec.children || []).map(compactNodeTree).filter(Boolean),
   };
 }

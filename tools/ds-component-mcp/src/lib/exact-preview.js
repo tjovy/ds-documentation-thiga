@@ -175,6 +175,7 @@ function buildButtonPreview(context) {
     size, variant, state,
     x: numberFromPx(spec.x),
     y: numberFromPx(spec.y),
+    label: spec.label?.text || '',
     icons: (spec.icons?.items || []).map((icon) => ({ glyph: icon.glyph || '' })),
     content: spec.icons?.content || [{ type: 'label' }],
   }));
@@ -240,7 +241,7 @@ const Demo = () => (
         previewIcons={item.icons}
         previewContent={item.content}
         style={{ left: item.x, top: item.y }}
-      />
+      >{item.label}</Button>
     ))}
   </div>
 );
@@ -536,6 +537,39 @@ function genericNodeShadow(context, node) {
   return effects.map((effect) => `${effect.type === 'INNER_SHADOW' ? 'inset ' : ''}${translateShadow(context, effect.css.replace(/^inset\s+/, ''))}`).join(', ');
 }
 
+function renderFigmaVector(node, context, className, state) {
+  const fillPaths = node.fillGeometry || [];
+  const strokePaths = node.strokeGeometry || [];
+  if (!fillPaths.length && !strokePaths.length) return null;
+  if ((node.effects || []).length) throw new Error(`Effet vectoriel Figma non reproductible exactement pour ${node.name}`);
+  const fill = (node.fills || []).find((paint) => paint.color);
+  const stroke = (node.strokes || []).find((paint) => paint.color);
+  if (fillPaths.length && !fill) throw new Error(`Fill vectoriel Figma manquant pour ${node.name}`);
+  if (strokePaths.length && !stroke) throw new Error(`Stroke vectoriel Figma manquant pour ${node.name}`);
+  const width = numberFromPx(node.width);
+  const height = numberFromPx(node.height);
+  if (!width || !height) throw new Error(`Dimensions vectorielles Figma manquantes pour ${node.name}`);
+  state.css.push(
+    `.${className} {`,
+    '  position: absolute;',
+    `  left: ${px(node.x)};`,
+    `  top: ${px(node.y)};`,
+    `  width: ${px(node.width)};`,
+    `  height: ${px(node.height)};`,
+    `  opacity: ${node.opacity ?? 1};`,
+    `  display: ${node.visible === false ? 'none' : 'block'};`,
+    '  overflow: visible;',
+    '}',
+    '',
+  );
+  const pathJsx = (paths, color) => paths.map((path) => `<path d={${JSON.stringify(path.path)}} fill="${color}" fillRule="${path.windingRule === 'EVENODD' ? 'evenodd' : 'nonzero'}" />`).join('\n');
+  const paths = [
+    ...(fillPaths.length ? [pathJsx(fillPaths, cssVarForValue(context, fill.color))] : []),
+    ...(strokePaths.length ? [pathJsx(strokePaths, cssVarForValue(context, stroke.color))] : []),
+  ].join('\n');
+  return `<svg className="${className}" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false">\n${paths}\n</svg>`;
+}
+
 function renderGenericNode(node, context, state, options = {}) {
   const supported = new Set([
     'FRAME',
@@ -551,12 +585,17 @@ function renderGenericNode(node, context, state, options = {}) {
     'LINE',
     'BOOLEAN_OPERATION',
     'SHAPE_WITH_TEXT',
+    'VECTOR',
   ]);
   if (!supported.has(node.type)) {
     throw new Error(`Type Figma ${node.type} non reproductible exactement pour ${node.name}`);
   }
   const index = state.index++;
   const className = `${context.component.rootClass}__figma-${index}-${safeClassPart(node.name)}`;
+  if (!options.root && ['VECTOR', 'LINE', 'BOOLEAN_OPERATION', 'POLYGON', 'STAR'].includes(node.type)) {
+    const vector = renderFigmaVector(node, context, className, state);
+    if (vector) return vector;
+  }
   const lines = [`.${className} {`, `  position: ${options.root ? 'absolute' : 'absolute'};`, '  box-sizing: border-box;'];
   if (options.root && context.component.htmlTag === 'button') {
     lines.push('  appearance: none;', '  margin: 0;', '  padding: 0;');

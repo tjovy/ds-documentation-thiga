@@ -20,7 +20,9 @@
  * so you can pick the right one.
  */
 
-import { execFileSync, execSync } from 'child_process';
+import { execFileSync } from 'child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -33,10 +35,6 @@ const RAW_TOKENS_PATH = path.join(rootDir, 'tokens.json');
 const DOCS_PATH = path.join(rootDir, 'tokens-docs.json');
 const CSS_PATH = path.join(rootDir, 'src', 'stories', 'variables.css');
 // ── Helpers ──────────────────────────────────────────
-
-function fetchJson(url) {
-  return JSON.parse(execSync(`curl -sf -H "Accept: application/vnd.github+json" "${url}"`, { encoding: 'utf8' }));
-}
 
 function resolveRef(branch) {
   const remote = `https://github.com/${REPO}.git`;
@@ -62,10 +60,7 @@ function download(filePath, ref, outputPath) {
 
 function listAIBranches() {
   const url = `https://api.github.com/repos/${REPO}/git/matching-refs/heads/ai/`;
-  const result = execSync(
-    `curl -sf -H "Accept: application/vnd.github+json" "${url}"`,
-    { encoding: 'utf8' }
-  );
+  const result = execFileSync('curl', ['-fsSL', '-H', 'Accept: application/vnd.github+json', url], { encoding: 'utf8' });
   const refs = JSON.parse(result);
   return refs
     .map((item) => ({
@@ -118,31 +113,35 @@ try {
   process.exit(1);
 }
 
-// Download latest tokens from main
+const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'thiga-storybook-sync-'));
 try {
-  download('tokens.json', mainSha, RAW_TOKENS_PATH);
-  console.log(`  ✅  tokens.json downloaded from "main" (${mainSha.slice(0, 7)})`);
-} catch {
-  console.error('  ❌  Could not download tokens.json from "main".');
-  process.exit(1);
+  const tokenFile = path.join(stagingDir, 'tokens.json');
+  const docsFile = path.join(stagingDir, 'tokens-docs.json');
+  const cssFile = path.join(stagingDir, 'variables.css');
+  download('tokens.json', mainSha, tokenFile);
+  download('tokens-docs.json', branchSha, docsFile);
+  download('build/css/variables.css', mainSha, cssFile);
+
+  const tokens = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+  const docs = JSON.parse(fs.readFileSync(docsFile, 'utf8'));
+  const css = fs.readFileSync(cssFile, 'utf8');
+  if (!tokens.core || !docs.component || !css.includes(':root') || !css.includes('--core-')) {
+    throw new Error('Les artefacts GitHub sont incomplets.');
+  }
+
+  fs.copyFileSync(tokenFile, RAW_TOKENS_PATH);
+  fs.copyFileSync(docsFile, DOCS_PATH);
+  fs.copyFileSync(cssFile, CSS_PATH);
+  console.log(`  ✅  tokens.json et variables.css publies depuis main (${mainSha.slice(0, 7)})`);
+  console.log(`  ✅  tokens-docs.json depuis ${branch} (${branchSha.slice(0, 7)})`);
+} catch (error) {
+  console.error(`  ❌  Synchronisation impossible: ${error.message}`);
+  process.exitCode = 1;
+} finally {
+  fs.rmSync(stagingDir, { recursive: true, force: true });
 }
 
-// Download tokens-docs.json (AI-enriched descriptions)
-try {
-  download('tokens-docs.json', branchSha, DOCS_PATH);
-  console.log(`  ✅  tokens-docs.json downloaded from "${branch}" (${branchSha.slice(0, 7)})`);
-} catch {
-  console.warn(`  ⚠️   tokens-docs.json not found on branch "${branch}".`);
-  console.warn('        AI descriptions will not be available — falling back to Figma descriptions.');
-}
-
-try {
-  download('build/css/variables.css', mainSha, CSS_PATH);
-  console.log(`  ✅  variables.css downloaded from "main" (${mainSha.slice(0, 7)})`);
-} catch {
-  console.warn('  ⚠️   variables.css could not be downloaded from GitHub.');
-  console.warn('        Check that the token repo build has pushed build/css/variables.css on main.');
-}
+if (process.exitCode) process.exit();
 
 console.log('\nDone! Storybook will now use:');
 console.log('  - tokens.json from main');

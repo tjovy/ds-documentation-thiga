@@ -54,10 +54,11 @@ async function loadReviewArtifacts(owner: string, repo: string, branch: string, 
   // is deliberately ignored when stale, so a review cannot mix another commit's files.
   const currentRef = await resolveReviewRef(branch);
   const ref = String(sourceRef || '').toLowerCase() === currentRef.toLowerCase() ? String(sourceRef) : currentRef;
+  const mainRef = await resolveReviewRef('main');
   const [docsFile, tokensFile, cssFile] = await Promise.all([
     loadGithubFile(owner, repo, ref, 'tokens-docs.json'),
-    loadGithubFile(owner, repo, ref, 'tokens.json'),
-    loadGithubFile(owner, repo, ref, 'build/css/variables.css'),
+    loadGithubFile(owner, repo, mainRef, 'tokens.json'),
+    loadGithubFile(owner, repo, mainRef, 'build/css/variables.css'),
   ]);
 
   return {
@@ -65,6 +66,7 @@ async function loadReviewArtifacts(owner: string, repo: string, branch: string, 
     tokens: JSON.parse(tokensFile.toString('utf8')),
     variablesCss: cssFile.toString('utf8'),
     sourceRef: ref,
+    mainRef,
   };
 }
 

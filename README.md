@@ -18,16 +18,16 @@ Source Figma :
 
 Le plugin local `figma-token-exporter` lit les variables natives et tous les composants du fichier. Après sa configuration initiale, un clic met à jour uniquement `tokens.json` sur GitHub. Il ne génère aucun fichier JSON intermédiaire.
 
-`npm run storybook` synchronise automatiquement `tokens.json` et `variables.css` depuis `main` au démarrage, puis vérifie un nouveau commit GitHub toutes les 30 secondes. Après un push Figma, la couleur et les stories se mettent donc a jour sans commande supplementaire.
+`npm run storybook` synchronise `tokens.json` et le CSS généré `build/css/variables.css` depuis `main`, ainsi que `tokens-docs.json` depuis la dernière branche `ai/*`. Il surveille les deux branches toutes les 30 secondes. Le CSS de revue est téléchargé depuis GitHub sans régénération locale. Pour fixer une revue précise : `STORYBOOK_REVIEW_BRANCH=ai/nom-de-la-branche npm run storybook`.
 
-Sur cette machine, le service local Storybook est aussi installe avec `npm run storybook:install-service`. Il reste disponible sur `http://localhost:6006` et conserve cette synchronisation automatique.
+Sur cette machine, le service local Storybook est aussi installé avec `npm run storybook:install-service`. Il reste disponible sur `http://localhost:6007` et conserve cette synchronisation automatique.
 
 ```bash
 npm run figma-plugin:install
 npm run figma-plugin:build
 ```
 
-Importer ensuite `figma-token-exporter/manifest.json` depuis `Plugins > Development > Import plugin from manifest` dans Figma Desktop. Les instructions détaillées sont dans `figma-token-exporter/README.md`.
+Importer ensuite le `figma-token-exporter/manifest.json` de **ce dépôt Thiga** depuis `Plugins > Development > Import plugin from manifest` dans Figma Desktop. Si le plugin de développement déjà enregistré pointe vers `ds-documentation-caba`, remplacer cet enregistrement. Les instructions détaillées sont dans `figma-token-exporter/README.md`.
 
 ## Export attendu
 
@@ -54,8 +54,8 @@ Le workflow n8n `ds-documentation-thiga` applique ce principe :
 
 ## Sources de chaque vue Storybook
 
-- Les pages publiees du Design System lisent uniquement `main` : elles ne changent qu'apres la validation et le merge d'une PR.
-- Chaque review `ai/*` est isolee sur un commit precis de sa propre branche : `tokens-docs.json` fournit la documentation et le JSX, `tokens.json` fournit les tokens passes au MCP, et `build/css/variables.css` fournit les variables CSS du rendu. Les trois fichiers sont lus au meme SHA GitHub, puis les variables de la review sont scopees a son apercu.
+- Les tokens et le CSS du Design System sont lus depuis le même commit de `main`.
+- Chaque review `ai/*` lit `tokens-docs.json` au commit exact de sa branche. Le JSX et la documentation viennent de ce JSON ; les couleurs et autres variables proviennent du CSS généré sur `main`. Les variables CSS sont appliquées à l'aperçu de revue.
 - Le JSX affiche dans une review vient exclusivement de `tokens-docs.json`. Le workflow n8n le construit depuis le contrat MCP/Figma et le MCP le valide a nouveau avant toute sauvegarde ou creation de PR. Storybook ne fabrique pas de structure de composant de remplacement.
 
 Les composants du fichier Thiga ont des contrats MCP dédiés :

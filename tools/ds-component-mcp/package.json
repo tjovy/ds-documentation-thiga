@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "start:http": "supergateway --stdio \"node src/server.js\" --outputTransport streamableHttp --streamableHttpPath /mcp --port 3101 --cors",
+    "start:http": "node src/http-server.js",
     "check": "node --check src/server.js",
     "test": "node --test"
   },

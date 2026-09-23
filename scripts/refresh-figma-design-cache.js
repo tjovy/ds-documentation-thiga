@@ -136,12 +136,23 @@ function rgbaToCSS(color) {
     : `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+function px(value) {
+  return Number.isFinite(value) ? `${Number(value.toFixed(4))}px` : null;
+}
+
 function extractFills(fills) {
   if (!Array.isArray(fills)) return [];
   return fills.filter((fill) => fill.visible !== false).map((fill) => ({
     type: fill.type,
     color: fill.type === 'SOLID' ? rgbaToCSS(fill.color) : null,
     opacity: fill.opacity,
+    blendMode: fill.blendMode || null,
+    gradientStops: Array.isArray(fill.gradientStops)
+      ? fill.gradientStops.map((stop) => ({ position: stop.position, color: rgbaToCSS(stop.color) }))
+      : null,
+    gradientHandlePositions: fill.gradientHandlePositions || null,
+    imageRef: fill.imageRef || null,
+    scaleMode: fill.scaleMode || null,
   }));
 }
 
@@ -152,7 +163,8 @@ function extractEffects(effects) {
       const inset = effect.type === 'INNER_SHADOW' ? 'inset ' : '';
       return {
         type: effect.type,
-        css: `${inset}${effect.offset?.x || 0}px ${effect.offset?.y || 0}px ${effect.radius || 0}px ${effect.spread || 0}px ${rgbaToCSS(effect.color)}`,
+        css: `${inset}${px(effect.offset?.x) || '0px'} ${px(effect.offset?.y) || '0px'} ${px(effect.radius) || '0px'} ${px(effect.spread) || '0px'} ${rgbaToCSS(effect.color)}`,
+        blendMode: effect.blendMode || null,
       };
     }
     return { type: effect.type };
@@ -164,10 +176,10 @@ function extractTextStyle(node) {
   const style = node.style;
   return {
     fontFamily: style.fontFamily || null,
-    fontSize: style.fontSize ? `${style.fontSize}px` : null,
+    fontSize: px(style.fontSize),
     fontWeight: style.fontWeight || null,
-    lineHeight: style.lineHeightPx ? `${Math.round(style.lineHeightPx)}px` : null,
-    letterSpacing: style.letterSpacing ? `${style.letterSpacing}px` : null,
+    lineHeight: px(style.lineHeightPx),
+    letterSpacing: px(style.letterSpacing),
     textAlign: style.textAlignHorizontal?.toLowerCase() || null,
   };
 }
@@ -176,11 +188,11 @@ function extractAutoLayout(node) {
   if (!node.layoutMode || node.layoutMode === 'NONE') return null;
   return {
     direction: node.layoutMode === 'HORIZONTAL' ? 'row' : 'column',
-    gap: node.itemSpacing != null ? `${node.itemSpacing}px` : null,
-    paddingTop: node.paddingTop != null ? `${node.paddingTop}px` : null,
-    paddingRight: node.paddingRight != null ? `${node.paddingRight}px` : null,
-    paddingBottom: node.paddingBottom != null ? `${node.paddingBottom}px` : null,
-    paddingLeft: node.paddingLeft != null ? `${node.paddingLeft}px` : null,
+    gap: px(node.itemSpacing),
+    paddingTop: px(node.paddingTop),
+    paddingRight: px(node.paddingRight),
+    paddingBottom: px(node.paddingBottom),
+    paddingLeft: px(node.paddingLeft),
     alignItems: node.counterAxisAlignItems === 'CENTER' ? 'center' : node.counterAxisAlignItems === 'MAX' ? 'flex-end' : 'flex-start',
     justifyContent: node.primaryAxisAlignItems === 'CENTER' ? 'center' : node.primaryAxisAlignItems === 'SPACE_BETWEEN' ? 'space-between' : 'flex-start',
   };
@@ -193,19 +205,19 @@ function extractDesignSpec(node, parentBox = null) {
     name: node.name,
     type: node.type,
     description: node.description || null,
-    x: box && parentBox ? `${Math.round(box.x - parentBox.x)}px` : null,
-    y: box && parentBox ? `${Math.round(box.y - parentBox.y)}px` : null,
-    width: box?.width ? `${Math.round(box.width)}px` : null,
-    height: box?.height ? `${Math.round(box.height)}px` : null,
+    x: box && parentBox ? px(box.x - parentBox.x) : null,
+    y: box && parentBox ? px(box.y - parentBox.y) : null,
+    width: px(box?.width),
+    height: px(box?.height),
     visible: node.visible !== false,
     characters: node.type === 'TEXT' ? node.characters || '' : null,
-    cornerRadius: node.cornerRadius != null ? `${node.cornerRadius}px` : null,
+    cornerRadius: px(node.cornerRadius),
     cornerRadii: node.rectangleCornerRadii || null,
     fills: extractFills(node.fills),
     strokes: Array.isArray(node.strokes)
       ? node.strokes.filter((stroke) => stroke.visible !== false).map((stroke) => ({
         color: rgbaToCSS(stroke.color),
-        weight: node.strokeWeight ? `${node.strokeWeight}px` : null,
+        weight: px(node.strokeWeight),
         align: node.strokeAlign,
       }))
       : [],
@@ -214,6 +226,12 @@ function extractDesignSpec(node, parentBox = null) {
     textStyle: extractTextStyle(node),
     opacity: node.opacity != null && node.opacity < 1 ? node.opacity : null,
     clipsContent: node.clipsContent ?? false,
+    blendMode: node.blendMode || null,
+    constraints: node.constraints || null,
+    layoutSizingHorizontal: node.layoutSizingHorizontal || null,
+    layoutSizingVertical: node.layoutSizingVertical || null,
+    fillGeometry: node.fillGeometry || null,
+    strokeGeometry: node.strokeGeometry || null,
   };
 
   if (Array.isArray(node.children) && node.children.length > 0) {
@@ -251,7 +269,7 @@ try {
   }
 
   const ids = discovered.map((item) => item.nodeId).join(',');
-  const nodesPayload = await figmaGet(args.fileKey, `nodes?ids=${encodeURIComponent(ids)}`, figmaToken);
+  const nodesPayload = await figmaGet(args.fileKey, `nodes?ids=${encodeURIComponent(ids)}&geometry=paths`, figmaToken);
   const designSpecs = {};
 
   for (const nodeData of Object.values(nodesPayload.nodes || {})) {

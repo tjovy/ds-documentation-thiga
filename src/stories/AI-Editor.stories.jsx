@@ -43,7 +43,7 @@ const emptyValidationState = {
   issues: [],
 };
 
-const getPreviewWarning = (diff) => diff?.modifiedMeta?._meta?.preview?.warning || null;
+const getPreviewWarning = (diff) => diff?.modifiedMeta?.preview?.warning || null;
 
 const scopeReviewVariablesCss = (css) => String(css || '').replace(/:root\s*\{/g, '.do-review-token-scope {');
 
