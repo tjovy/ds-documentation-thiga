@@ -1,0 +1,63 @@
+name: Build CSS variables
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - tokens.json
+      - scripts/build-css-variables.js
+      - scripts/lib/token-normalizer.js
+      - scripts/lib/token-css-naming.js
+      - scripts/validate-css-contract.js
+      - tools/ds-component-mcp/registry/**
+      - tools/ds-component-mcp/src/lib/figma.js
+      - tools/ds-component-mcp/src/lib/registry.js
+      - tools/ds-component-mcp/src/lib/tokens.js
+      - .github/workflows/build-css-variables.yml
+  workflow_dispatch:
+  repository_dispatch:
+    types:
+      - figma_tokens_exported
+
+concurrency:
+  group: build-css-${{ github.ref || github.event.client_payload.branch || 'main' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-css-variables:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate CSS variables
+        run: node scripts/build-css-variables.js
+
+      - name: Validate CSS contract
+        run: node scripts/validate-css-contract.js
+
+      - name: Commit generated CSS
+        run: |
+          if [[ -z "$(git status --porcelain build/css/variables.css src/stories/variables.css)" ]]; then
+            echo "No generated CSS changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build/css/variables.css src/stories/variables.css
+          git commit -m "chore(tokens): build css variables"
+          git push
