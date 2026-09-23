@@ -45,8 +45,9 @@ test('loads the 24 Thiga Button combinations from Figma', () => {
   assert.equal(context.figma.expectedVariantCount, 24);
   assert.equal(context.figma.actualVariantCount, 24);
   assert.equal(context.figma.complete, true);
-  assert.equal(output.enforced, false);
-  assert.match(output.warning.detail, /Aucun token CSS ne correspond a la valeur Figma/);
+  assert.equal(output.enforced, true);
+  assert.equal(output.exact, true);
+  assert.equal(output.warning, null);
 });
 
 test('loads the six Thiga Card combinations without legacy Tone/Media axes', () => {
@@ -59,18 +60,20 @@ test('loads the six Thiga Card combinations without legacy Tone/Media axes', () 
   assert.equal(context.figma.actualVariantCount, 6);
   assert.equal(context.figma.complete, true);
   assert.equal(output.enforced, true);
-  assert.equal(output.exact, false);
-  assert.match(output.warning.detail, /Aucun token CSS ne correspond a la valeur Figma/);
+  assert.equal(output.exact, true);
+  assert.equal(output.warning, null);
   assert.deepEqual(validation.checks.hardcodedColors, []);
   assert.equal(validation.valid, true);
 });
 
-test('flags vector icons for visual review instead of inventing SVG geometry', () => {
+test('renders vector icons from the exact local Figma asset without inventing SVG geometry', () => {
   const { context, output } = exact('arrowRight');
   assert.equal(context.figma.available, true);
-  assert.equal(output.enforced, false);
-  assert.equal(output.warning.code, 'figma_preview_approximate');
-  assert.match(output.warning.detail, /VECTOR non reproductible exactement/);
+  assert.equal(output.enforced, true);
+  assert.equal(output.exact, true);
+  assert.equal(output.warning, null);
+  assert.match(output.code, /\/assets\/figma\/icon-arrow-right\.svg/);
+  assert.doesNotMatch(output.code, /<svg|<path/);
 });
 
 test('builds a deterministic preview for a newly discovered simple component', () => {

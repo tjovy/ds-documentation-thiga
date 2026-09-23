@@ -508,6 +508,7 @@ export function buildGenerationContext(registry, tokens, componentName, figmaCac
       states: definition.states || [],
       usageRules: definition.usageRules || { do: [], dont: [] },
       accessibility: definition.accessibility || [],
+      assetPath: definition.assetPath || null,
       previewMatrix: definition.previewMatrix || {},
       renderRequirements: definition.renderRequirements || null,
     },

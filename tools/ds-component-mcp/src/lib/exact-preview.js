@@ -244,6 +244,53 @@ const Demo = () => (
 render(<Demo />);`;
 }
 
+function buildFigmaAssetPreview(context) {
+  const assetPath = context.component.assetPath;
+  const tree = context.figma.blueprint?.tree;
+  if (!assetPath || !tree || tree.type !== 'COMPONENT') return null;
+  const componentName = safeIdentifier(context.component.title || context.component.name);
+  const child = (tree.children || []).find((node) => node.visible !== false);
+  const assetWidth = child ? numberFromPx(child.width) + 1.8 : numberFromPx(tree.width);
+  const assetHeight = child ? numberFromPx(child.height) + 1.8 : numberFromPx(tree.height);
+
+  return `const css = \`
+.${context.component.rootClass} {
+  position: relative;
+  display: inline-block;
+  width: ${px(tree.width)};
+  height: ${px(tree.height)};
+  overflow: ${tree.clipsContent ? 'hidden' : 'visible'};
+  line-height: 0;
+}
+.${context.component.rootClass}__asset {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: ${px(assetWidth)};
+  height: ${px(assetHeight)};
+  transform: translate(-50%, -50%);
+}
+\`;
+
+function ${componentName}({ className = "", "aria-label": ariaLabel }) {
+  const decorative = !ariaLabel;
+  return (
+    <span
+      className={["${context.component.rootClass}", className].filter(Boolean).join(" ")}
+      role={decorative ? undefined : "img"}
+      aria-label={ariaLabel}
+      aria-hidden={decorative ? "true" : undefined}
+    >
+      <img className="${context.component.rootClass}__asset" src="${assetPath}" alt="" />
+    </span>
+  );
+}
+
+const Demo = () => <><style>{css}</style><${componentName} aria-label="Flèche vers la droite" /></>;
+
+render(<Demo />);`;
+}
+
 function cardTextStyle(lines, selector, node, context, colorPaths) {
   if (!node) return;
   lines.push(
@@ -687,6 +734,8 @@ export function buildExactPreviewCode(context) {
   // the exact Figma canvas while exposing a useful developer API. All other
   // components use the generic MCP/Figma wrapper below.
   if (context.component.name === 'button') return buildButtonPreview(context);
+  const assetPreview = buildFigmaAssetPreview(context);
+  if (assetPreview) return assetPreview;
   const treePreview = buildGenericPreview(context);
   if (treePreview) return treePreview;
 

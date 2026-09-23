@@ -128,7 +128,7 @@ function extractButtonBlueprint(spec) {
     const labelNode = (child.children || []).find((item) => item?.type === 'TEXT' && /label/i.test(item?.name || ''))
       || (child.children || []).find((item) => item?.type === 'TEXT')
       || null;
-    const iconNodes = (child.children || []).filter((item) => /icon/i.test(item?.name || ''));
+    const iconNodes = (child.children || []).filter((item) => item?.visible !== false && /icon/i.test(item?.name || ''));
     const icons = iconNodes.map((iconNode) => {
       const iconText = extractTextNodes(iconNode)[0] || null;
       return {

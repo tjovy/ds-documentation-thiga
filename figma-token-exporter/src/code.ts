@@ -376,6 +376,51 @@ function componentMetadata(node: ComponentNode | ComponentSetNode): JsonObject {
   };
 }
 
+function opaqueColor(value: RGB | RGBA): string {
+  return `#${toHex(roundChannel(value.r))}${toHex(roundChannel(value.g))}${toHex(roundChannel(value.b))}`;
+}
+
+function collectComponentVisualColors(node: SceneNode, colors = new Set<string>()): Set<string> {
+  const collectPaints = (paints: readonly Paint[] | PluginAPI['mixed']): void => {
+    if (!Array.isArray(paints)) return;
+    for (const paint of paints) {
+      if (paint.visible === false) continue;
+      if (paint.type === 'SOLID') colors.add(opaqueColor(paint.color));
+      if ('gradientStops' in paint) {
+        for (const stop of paint.gradientStops) colors.add(opaqueColor(stop.color));
+      }
+    }
+  };
+
+  if ('fills' in node) collectPaints(node.fills);
+  if ('strokes' in node) collectPaints(node.strokes);
+  if ('effects' in node && Array.isArray(node.effects)) {
+    for (const effect of node.effects) {
+      if (effect.visible === false) continue;
+      if ('color' in effect && effect.color) colors.add(opaqueColor(effect.color));
+    }
+  }
+  if ('children' in node) {
+    for (const child of node.children) collectComponentVisualColors(child, colors);
+  }
+  return colors;
+}
+
+function addComponentVisualColorTokens(entry: JsonObject, componentName: string, node: ComponentNode | ComponentSetNode): void {
+  const colors = [...collectComponentVisualColors(node)].sort();
+  if (!colors.length) return;
+
+  const colorTokens: JsonObject = {};
+  for (const color of colors) {
+    colorTokens[color.slice(1)] = {
+      $value: color,
+      $type: 'color',
+      $description: `Couleur visuelle exacte extraite du composant Figma ${componentName}.`,
+    } as unknown as JsonValue;
+  }
+  entry.figmaVisual = { color: colorTokens };
+}
+
 function ensureComponentEntry(componentRoot: JsonObject, key: string): JsonObject {
   const existing = componentRoot[key];
   if (existing === undefined) componentRoot[key] = {};
@@ -405,6 +450,7 @@ async function discoverComponents(componentRoot: JsonObject): Promise<number> {
       return a.type === 'COMPONENT_SET' ? -1 : 1;
     })[0];
     entry.$figma = componentMetadata(preferred);
+    addComponentVisualColorTokens(entry, key, preferred);
     if (matches.length > 1) {
       (entry.$figma as JsonObject).duplicates = matches.slice(1).map(componentMetadata);
     }

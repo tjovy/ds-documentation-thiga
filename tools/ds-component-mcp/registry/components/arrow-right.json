@@ -1,6 +1,6 @@
 {
   "name": "arrowRight", "title": "Icon/Arrow Right", "htmlTag": "span", "role": "img", "requiresFigma": true, "interactive": false,
-  "summary": "Icône Thiga Arrow Right.", "allowedProps": ["className", "aria-label"], "slots": [], "variants": [], "sizes": [], "states": [],
+  "summary": "Icône Thiga Arrow Right.", "assetPath": "/assets/figma/icon-arrow-right.svg", "allowedProps": ["className", "aria-label"], "slots": [], "variants": [], "sizes": [], "states": [],
   "usageRules": {"do": ["Masquer l’icône aux technologies d’assistance si elle est décorative."], "dont": ["Ne pas l’utiliser seule sans libellé accessible pour une action."]},
   "accessibility": ["Fournir aria-label si l’icône porte du sens."], "previewMatrix": {}, "requiredTokenPaths": []
 }
