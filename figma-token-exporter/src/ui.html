@@ -269,7 +269,7 @@
 
         if (message.type === 'github-probe-complete') {
           busy(false);
-          status(`Connexion GitHub opérationnelle (HTTP ${message.statusCode}).`, 'success');
+          status(`Lecture GitHub opérationnelle (HTTP ${message.statusCode}). Le droit d'écriture sera vérifié lors du push.`, 'success');
           return;
         }
 

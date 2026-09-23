@@ -720,6 +720,12 @@ async function pushToGitHub(
     }
 
     const details = await updateResponse.text();
+    if (updateResponse.status === 403 && /Resource not accessible by personal access token/i.test(details)) {
+      throw new Error(
+        `Le token GitHub enregistré ne peut pas écrire dans ${settings.owner}/${settings.repo}. `
+        + 'Utilise un fine-grained PAT autorisé sur ce dépôt avec Contents: Read and write.',
+      );
+    }
     throw new Error(`Push GitHub impossible (${updateResponse.status}) : ${details.slice(0, 240)}`);
   }
 
@@ -802,15 +808,30 @@ figma.ui.onmessage = async (message: {
     }
 
     if (message.type === 'probe-github') {
-      const config = validateConfig(message.config || DEFAULT_CONFIG);
+      const settings = await saveSettings(message.config || DEFAULT_CONFIG, message.token);
+      if (!settings.token) throw new Error('Token GitHub manquant.');
       send('working', { label: 'Test de connexion à GitHub…' });
-      const url = `https://api.github.com/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/git/ref/heads/${encodeURIComponent(config.branch)}`;
-      const response = await githubRequest(url);
-      if (!response.ok) {
-        const details = await response.text();
-        throw new Error(`Connexion GitHub impossible (${response.status}) : ${details.slice(0, 240)}`);
+      const repositoryUrl = `https://api.github.com/repos/${encodeURIComponent(settings.owner)}/${encodeURIComponent(settings.repo)}`;
+      const repositoryResponse = await githubRequest(cacheBustedUrl(repositoryUrl), settings.token);
+      if (!repositoryResponse.ok) {
+        const details = await repositoryResponse.text();
+        throw new Error(`Accès au dépôt GitHub impossible (${repositoryResponse.status}) : ${details.slice(0, 240)}`);
       }
-      send('github-probe-complete', { statusCode: response.status });
+      const repository = await repositoryResponse.json() as { permissions?: { push?: boolean } };
+      if (repository.permissions?.push !== true) {
+        throw new Error(
+          `Le token est valide en lecture, mais ne peut pas écrire dans ${settings.owner}/${settings.repo}. `
+          + 'Autorise ce dépôt et active Contents: Read and write.',
+        );
+      }
+
+      const refUrl = `${repositoryUrl}/git/ref/heads/${encodeURIComponent(settings.branch)}`;
+      const refResponse = await githubRequest(cacheBustedUrl(refUrl), settings.token);
+      if (!refResponse.ok) {
+        const details = await refResponse.text();
+        throw new Error(`Lecture de la branche GitHub impossible (${refResponse.status}) : ${details.slice(0, 240)}`);
+      }
+      send('github-probe-complete', { statusCode: refResponse.status });
       return;
     }
 

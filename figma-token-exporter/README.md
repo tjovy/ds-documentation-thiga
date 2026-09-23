@@ -28,6 +28,8 @@ Dans `Réglages GitHub`, conserver :
 
 Ajouter une fois un token GitHub fine-grained limité à ce dépôt avec la permission `Contents: Read and write`. Le token reste dans le stockage local du plugin Figma. Il n'est jamais écrit dans le fichier Figma ni dans `tokens.json`.
 
+Un token d'une autre organisation ne suffit pas : il doit être explicitement autorisé sur `tjovy/ds-documentation-thiga`. Le bouton `Tester la connexion GitHub` vérifie l'accès au dépôt et à la branche ; GitHub ne confirme la permission `Contents: Read and write` qu'au moment du push.
+
 Ensuite, un clic sur `Générer et pousser vers GitHub` :
 
 1. lit toutes les variables locales ;
