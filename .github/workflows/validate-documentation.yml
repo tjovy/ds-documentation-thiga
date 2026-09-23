@@ -27,5 +27,7 @@ jobs:
       - run: npm run test:mcp
       - run: npm run build-css
       - run: npm run validate-css-contract
+      # Kept as a compatibility flag name; the validator enforces the current
+      # workflow version and validates the component batch present on the branch.
       - run: REQUIRE_SSOT_V4=1 npm run validate-docs
       - run: npm run build-storybook
