@@ -1,0 +1,248 @@
+{
+  "name": "figma-cache-refresh",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "ec23a141-bc0d-402d-acd0-d2a3c5b2db0f",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    figma_file_key: process.env.THIGA_FIGMA_FILE_KEY || 'eJDPjIrF5PRUpMXtXsvSRX',\n    tokens_path: '/Users/atypic/Creative Cloud Files  info@atypic.fr C0B12A6F642A9F790A495F8A@bd4429a7642a9ed0495c8c.e/BOULOT/_PERSO/MICRO/WORKFLOWS/design-system/github/ds-documentation-thiga/tokens.json',\n    cache_path: '/Users/atypic/Creative Cloud Files  info@atypic.fr C0B12A6F642A9F790A495F8A@bd4429a7642a9ed0495c8c.e/BOULOT/_PERSO/MICRO/WORKFLOWS/design-system/github/ds-documentation-thiga/n8n/cache/figma-design-specs.json'\n  }\n}];"
+      },
+      "id": "53614a09-3e5a-47bf-912f-4600e1bc7584",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.figma.com/v1/files/{{ $json.figma_file_key }}/component_sets",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "f4c1d96e-05a1-4e92-923d-5f52e56173b9",
+      "name": "Get Figma Component Sets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wCafRyIqEdZEIlsI",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.figma.com/v1/files/{{ $(\"Config\").first().json.figma_file_key }}/components",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "4ee7c2e5-d53f-49b4-887b-6aa06e9297b0",
+      "name": "Get Figma Components",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wCafRyIqEdZEIlsI",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.figma.com/v1/files/{{ $(\"Config\").first().json.figma_file_key }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "99f95f72-37f4-4662-94d2-b47ac809eb9a",
+      "name": "Get Figma File Fallback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wCafRyIqEdZEIlsI",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst config = $('Config').first().json;\nconst componentSetsPayload = $('Get Figma Component Sets').first().json;\nconst componentsPayload = $('Get Figma Components').first().json;\nconst documentPayload = $('Get Figma File Fallback').first().json;\nconst tokens = JSON.parse(fs.readFileSync(config.tokens_path, 'utf8'));\n\nfunction normalizeName(value) {\n  return String(value || '')\n    .split('/')\n    .pop()\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, '');\n}\n\nfunction toList(payload, key) {\n  return payload?.meta?.[key] || payload?.[key] || [];\n}\n\nconst tokenNames = new Set(Object.keys(tokens.component || {}).map(normalizeName).filter(Boolean));\n\nfunction discoverFromComponentEndpoints() {\n  const seen = new Set();\n  const discovered = [];\n  function add(item, kind) {\n    const name = item?.name || '';\n    const nodeId = item?.node_id || item?.nodeId;\n    if (!nodeId || !tokenNames.has(normalizeName(name)) || seen.has(nodeId)) return;\n    seen.add(nodeId);\n    discovered.push({ nodeId, name, kind });\n  }\n  for (const item of toList(componentSetsPayload, 'component_sets')) add(item, 'component_set');\n  for (const item of toList(componentsPayload, 'components')) {\n    if (item.component_set_id || item.componentSetId) continue;\n    add(item, 'component');\n  }\n  return discovered;\n}\n\nfunction discoverFromDocument() {\n  const seen = new Set();\n  const discovered = [];\n  function visit(node, trail = []) {\n    if (!node || typeof node !== 'object') return;\n    const nextTrail = node.name ? [...trail, node.name] : trail;\n    if ((node.type === 'COMPONENT_SET' || node.type === 'COMPONENT') && tokenNames.has(normalizeName(node.name))) {\n      if (node.id && !seen.has(node.id)) {\n        seen.add(node.id);\n        discovered.push({ nodeId: node.id, name: node.name, kind: node.type.toLowerCase(), path: nextTrail.join(' / ') });\n      }\n    }\n    for (const child of node.children || []) visit(child, nextTrail);\n  }\n  visit(documentPayload?.document);\n  return discovered;\n}\n\nlet discoverySource = 'component_sets + components';\nlet discovered = discoverFromComponentEndpoints();\nif (!discovered.length) {\n  discovered = discoverFromDocument();\n  discoverySource = 'full file traversal';\n}\n\ndiscovered.sort((a, b) => a.name.localeCompare(b.name));\nif (!discovered.length) {\n  throw new Error('Aucun composant Figma ne correspond aux entrees tokens.json > component.*');\n}\n\nreturn [{ json: { ...config, discovered, discovery_source: discoverySource, component_ids: discovered.map((item) => item.nodeId).join(',') } }];"
+      },
+      "id": "7c3a19e2-6a29-4206-9166-bbb5e6e4d75d",
+      "name": "Discover DS Components",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.figma.com/v1/files/{{ $json.figma_file_key }}/nodes?ids={{ $json.component_ids }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "a378f507-25e7-4a29-928b-52adb28d910a",
+      "name": "Get Figma Nodes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wCafRyIqEdZEIlsI",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst config = $('Discover DS Components').first().json;\nconst response = $input.first().json;\nconst nodes = response.nodes || {};\n\nfunction rgbaToCSS(color) {\n  if (!color) return null;\n  const r = Math.round((color.r || 0) * 255);\n  const g = Math.round((color.g || 0) * 255);\n  const b = Math.round((color.b || 0) * 255);\n  const a = color.a !== undefined ? color.a : 1;\n  return a < 1 ? `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})` : `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;\n}\n\nfunction extractFills(fills) {\n  if (!Array.isArray(fills)) return [];\n  return fills.filter(f => f.visible !== false).map(f => ({ type: f.type, color: f.type === 'SOLID' ? rgbaToCSS(f.color) : null, opacity: f.opacity }));\n}\n\nfunction extractEffects(effects) {\n  if (!Array.isArray(effects)) return [];\n  return effects.filter(e => e.visible !== false).map(e => {\n    if (e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW') {\n      const inset = e.type === 'INNER_SHADOW' ? 'inset ' : '';\n      return { type: e.type, css: `${inset}${e.offset?.x || 0}px ${e.offset?.y || 0}px ${e.radius || 0}px ${e.spread || 0}px ${rgbaToCSS(e.color)}` };\n    }\n    return { type: e.type };\n  });\n}\n\nfunction extractTextStyle(node) {\n  if (node.type !== 'TEXT' || !node.style) return null;\n  const s = node.style;\n  return {\n    fontFamily: s.fontFamily || null,\n    fontSize: s.fontSize ? `${s.fontSize}px` : null,\n    fontWeight: s.fontWeight || null,\n    lineHeight: s.lineHeightPx ? `${Math.round(s.lineHeightPx)}px` : null,\n    letterSpacing: s.letterSpacing ? `${s.letterSpacing}px` : null,\n    textAlign: s.textAlignHorizontal?.toLowerCase() || null\n  };\n}\n\nfunction extractAutoLayout(node) {\n  if (!node.layoutMode || node.layoutMode === 'NONE') return null;\n  return {\n    direction: node.layoutMode === 'HORIZONTAL' ? 'row' : 'column',\n    gap: node.itemSpacing != null ? `${node.itemSpacing}px` : null,\n    paddingTop: node.paddingTop != null ? `${node.paddingTop}px` : null,\n    paddingRight: node.paddingRight != null ? `${node.paddingRight}px` : null,\n    paddingBottom: node.paddingBottom != null ? `${node.paddingBottom}px` : null,\n    paddingLeft: node.paddingLeft != null ? `${node.paddingLeft}px` : null,\n    alignItems: node.counterAxisAlignItems === 'CENTER' ? 'center' : (node.counterAxisAlignItems === 'MAX' ? 'flex-end' : 'flex-start'),\n    justifyContent: node.primaryAxisAlignItems === 'CENTER' ? 'center' : (node.primaryAxisAlignItems === 'SPACE_BETWEEN' ? 'space-between' : 'flex-start')\n  };\n}\n\nfunction extractDesignSpec(node) {\n  const spec = {\n    name: node.name, type: node.type,\n    width: node.absoluteBoundingBox?.width ? `${Math.round(node.absoluteBoundingBox.width)}px` : null,\n    height: node.absoluteBoundingBox?.height ? `${Math.round(node.absoluteBoundingBox.height)}px` : null,\n    cornerRadius: node.cornerRadius != null ? `${node.cornerRadius}px` : null,\n    cornerRadii: node.rectangleCornerRadii || null,\n    fills: extractFills(node.fills),\n    strokes: Array.isArray(node.strokes) ? node.strokes.filter(s => s.visible !== false).map(s => ({ color: rgbaToCSS(s.color), weight: node.strokeWeight ? `${node.strokeWeight}px` : null, align: node.strokeAlign })) : [],\n    effects: extractEffects(node.effects),\n    autoLayout: extractAutoLayout(node),\n    textStyle: extractTextStyle(node),\n    opacity: node.opacity != null && node.opacity < 1 ? node.opacity : null,\n    clipsContent: node.clipsContent ?? false\n  };\n  if (Array.isArray(node.children) && node.children.length > 0) spec.children = node.children.map(child => extractDesignSpec(child));\n  return spec;\n}\n\nconst designSpecs = {};\nfor (const nodeData of Object.values(nodes)) {\n  const doc = nodeData?.document || nodeData;\n  if (doc?.name) designSpecs[doc.name] = extractDesignSpec(doc);\n}\n\nconst cache = {\n  _meta: {\n    cached_at: new Date().toISOString(),\n    figma_file_key: config.figma_file_key,\n    source: `Figma REST API auto-discovery: ${config.discovery_source} + nodes`,\n    node_ids: config.component_ids,\n    discovered_components: config.discovered\n  },\n  figma_design_specs: designSpecs,\n  specs_count: Object.keys(designSpecs).length\n};\n\nfs.writeFileSync(config.cache_path, JSON.stringify(cache, null, 2), 'utf8');\nreturn [{ json: { message: 'Cache Figma auto mis a jour', cached_at: cache._meta.cached_at, components: Object.keys(designSpecs), specs_count: cache.specs_count, cache_path: config.cache_path } }];"
+      },
+      "id": "69e26ce4-bf4c-433a-958e-3c7201d6e2bf",
+      "name": "Parse + Save Cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Figma Component Sets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Figma Component Sets": {
+      "main": [
+        [
+          {
+            "node": "Get Figma Components",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Figma Components": {
+      "main": [
+        [
+          {
+            "node": "Get Figma File Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Figma File Fallback": {
+      "main": [
+        [
+          {
+            "node": "Discover DS Components",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discover DS Components": {
+      "main": [
+        [
+          {
+            "node": "Get Figma Nodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Figma Nodes": {
+      "main": [
+        [
+          {
+            "node": "Parse + Save Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {},
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ds-documentation-figma-cache"
+  },
+  "updatedAt": "2026-07-18T16:47:47.813Z"
+}

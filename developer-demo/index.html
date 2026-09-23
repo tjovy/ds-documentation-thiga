@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Démo développeur - CSS Thiga</title>
+    <link rel="stylesheet" href="../build/css/variables.css" />
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <main class="demo">
+      <section class="demo__content" aria-labelledby="demo-title">
+        <p class="demo__eyebrow">Démo développeur</p>
+        <h1 id="demo-title">Bouton de réservation</h1>
+        <p>La couleur du bouton provient du CSS généré par GitHub.</p>
+        <button type="button" id="reservation-button">Réserver</button>
+        <code>var(--semantic-color-action-primary-default)</code>
+      </section>
+    </main>
+    <script>
+      const button = document.getElementById('reservation-button');
+      button.addEventListener('click', () => {
+        button.textContent = 'Réservation envoyée';
+      });
+    </script>
+  </body>
+</html>

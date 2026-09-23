@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        font-family: Inter, system-ui, sans-serif;
+        color: var(--figma-color-text);
+        background: var(--figma-color-bg);
+        font-size: 12px;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 16px; }
+      h1 { margin: 0; font-size: 15px; line-height: 22px; font-weight: 600; }
+      p { margin: 4px 0 0; color: var(--figma-color-text-secondary); line-height: 18px; }
+      button, input { font: inherit; }
+
+      .header { margin-bottom: 16px; }
+      .file {
+        margin-top: 10px;
+        padding: 8px 10px;
+        border: 1px solid var(--figma-color-border);
+        border-radius: 6px;
+        color: var(--figma-color-text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .actions { display: grid; gap: 8px; }
+      .commit-field { display: grid; gap: 5px; margin-bottom: 10px; color: var(--figma-color-text-secondary); }
+      button {
+        min-height: 36px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 0 12px;
+        cursor: pointer;
+      }
+      button:disabled { cursor: default; opacity: .55; }
+      .primary { background: var(--figma-color-bg-brand); color: var(--figma-color-text-onbrand); font-weight: 600; }
+      .secondary { background: transparent; border-color: var(--figma-color-border); color: var(--figma-color-text); }
+
+      details { margin-top: 16px; border-top: 1px solid var(--figma-color-border); padding-top: 12px; }
+      summary { cursor: pointer; font-weight: 600; line-height: 24px; }
+      .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+      label { display: grid; gap: 5px; color: var(--figma-color-text-secondary); }
+      label.full { grid-column: 1 / -1; }
+      input {
+        width: 100%;
+        height: 32px;
+        border: 1px solid var(--figma-color-border);
+        border-radius: 4px;
+        background: var(--figma-color-bg-secondary);
+        color: var(--figma-color-text);
+        padding: 0 8px;
+        outline: none;
+      }
+      input:focus { border-color: var(--figma-color-border-brand); }
+      .help { font-size: 11px; line-height: 16px; }
+      .save { grid-column: 1 / -1; justify-self: start; min-height: 30px; }
+
+      .status {
+        min-height: 48px;
+        margin-top: 14px;
+        border-radius: 6px;
+        padding: 10px;
+        background: var(--figma-color-bg-secondary);
+        color: var(--figma-color-text-secondary);
+        line-height: 18px;
+      }
+      .status.success { color: var(--figma-color-text-success); }
+      .status.error { color: var(--figma-color-text-danger); }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Exporter les variables</h1>
+      <p>Un seul fichier produit : <strong>tokens.json</strong>.</p>
+      <div class="file" id="file-name">Chargement du fichier Figma…</div>
+    </div>
+
+    <label class="commit-field">
+      Message de commit GitHub
+      <input id="commit-message" autocomplete="off" value="Commit ici" />
+    </label>
+
+    <div class="actions">
+      <button class="primary" id="push">Générer et pousser vers GitHub</button>
+      <button class="secondary" id="download">Télécharger tokens.json</button>
+      <button class="secondary" id="probe">Tester la connexion GitHub</button>
+    </div>
+
+    <details id="settings-panel">
+      <summary>Réglages GitHub</summary>
+      <div class="settings">
+        <label>
+          Propriétaire
+          <input id="owner" autocomplete="off" />
+        </label>
+        <label>
+          Dépôt
+          <input id="repo" autocomplete="off" />
+        </label>
+        <label class="full">
+          Branche
+          <input id="branch" autocomplete="off" />
+        </label>
+        <label class="full">
+          Token GitHub
+          <input id="token" type="password" autocomplete="off" placeholder="À renseigner une seule fois" />
+          <span class="help" id="token-help">Token fine-grained avec Contents: Read and write.</span>
+        </label>
+        <button class="secondary save" id="save">Enregistrer les réglages</button>
+      </div>
+    </details>
+
+    <div class="status" id="status">Prêt.</div>
+
+    <script>
+      const elements = {
+        fileName: document.getElementById('file-name'),
+        push: document.getElementById('push'),
+        download: document.getElementById('download'),
+        probe: document.getElementById('probe'),
+        settings: document.getElementById('settings-panel'),
+        owner: document.getElementById('owner'),
+        repo: document.getElementById('repo'),
+        branch: document.getElementById('branch'),
+        commitMessage: document.getElementById('commit-message'),
+        token: document.getElementById('token'),
+        tokenHelp: document.getElementById('token-help'),
+        save: document.getElementById('save'),
+        status: document.getElementById('status'),
+      };
+
+      function config() {
+        return {
+          owner: elements.owner.value.trim(),
+          repo: elements.repo.value.trim(),
+          branch: elements.branch.value.trim(),
+        };
+      }
+
+      function send(type) {
+        parent.postMessage({
+          pluginMessage: {
+            type,
+            config: config(),
+            commitMessage: elements.commitMessage.value.trim(),
+            token: elements.token.value.trim(),
+          },
+        }, '*');
+      }
+
+      function busy(value) {
+        elements.push.disabled = value;
+        elements.download.disabled = value;
+        elements.probe.disabled = value;
+        elements.save.disabled = value;
+      }
+
+      function status(message, kind = '') {
+        elements.status.textContent = message;
+        elements.status.className = `status ${kind}`.trim();
+      }
+
+      function downloadJson(content) {
+        const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'tokens.json';
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      async function requestGitHub(message) {
+        try {
+          const response = await fetch(message.url, {
+            method: message.method,
+            headers: message.headers,
+            body: message.body,
+            cache: 'no-store',
+          });
+          const body = await response.text();
+          parent.postMessage({
+            pluginMessage: {
+              type: 'github-response',
+              requestId: message.requestId,
+              ok: response.ok,
+              status: response.status,
+              body,
+            },
+          }, '*');
+        } catch (error) {
+          parent.postMessage({
+            pluginMessage: {
+              type: 'github-response',
+              requestId: message.requestId,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          }, '*');
+        }
+      }
+
+      elements.push.addEventListener('click', () => {
+        busy(true);
+        send('push');
+      });
+      elements.download.addEventListener('click', () => {
+        busy(true);
+        send('download');
+      });
+      elements.probe.addEventListener('click', () => {
+        busy(true);
+        send('probe-github');
+      });
+      elements.save.addEventListener('click', () => {
+        busy(true);
+        send('save-settings');
+      });
+
+      window.onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message) return;
+
+        if (message.type === 'github-request') {
+          requestGitHub(message);
+          return;
+        }
+
+        if (message.type === 'init') {
+          elements.fileName.textContent = message.fileName;
+          elements.owner.value = message.config.owner;
+          elements.repo.value = message.config.repo;
+          elements.branch.value = message.config.branch;
+          if (message.hasToken) {
+            elements.token.placeholder = 'Token déjà enregistré';
+            elements.tokenHelp.textContent = 'Un token est déjà enregistré localement pour ce plugin.';
+          } else {
+            elements.settings.open = true;
+            status('Première utilisation : renseigne le token GitHub, puis clique sur le bouton principal.');
+          }
+          return;
+        }
+
+        if (message.type === 'working') {
+          busy(true);
+          status(message.label);
+          return;
+        }
+
+        if (message.type === 'settings-saved') {
+          busy(false);
+          elements.token.value = '';
+          elements.token.placeholder = message.hasToken ? 'Token déjà enregistré' : 'À renseigner une seule fois';
+          status('Réglages enregistrés.', 'success');
+          return;
+        }
+
+        if (message.type === 'download-ready') {
+          busy(false);
+          downloadJson(message.content);
+          status(`${message.variableCount} variables et ${message.componentCount} composants exportés.`, 'success');
+          return;
+        }
+
+        if (message.type === 'github-probe-complete') {
+          busy(false);
+          status(`Connexion GitHub opérationnelle (HTTP ${message.statusCode}).`, 'success');
+          return;
+        }
+
+        if (message.type === 'push-complete') {
+          busy(false);
+          elements.token.value = '';
+          const prefix = message.status === 'unchanged'
+            ? 'Aucun changement à pousser.'
+            : 'tokens.json envoyé sur GitHub. La génération CSS démarre avec ce push.';
+          status(`${prefix} ${message.variableCount} variables, ${message.collectionCount} collections et ${message.componentCount} composants.`, 'success');
+          return;
+        }
+
+        if (message.type === 'error') {
+          busy(false);
+          status(message.message, 'error');
+        }
+      };
+    </script>
+  </body>
+</html>

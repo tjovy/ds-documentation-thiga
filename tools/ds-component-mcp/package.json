@@ -1,0 +1,20 @@
+{
+  "name": "ds-component-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "start:http": "supergateway --stdio \"node src/server.js\" --outputTransport streamableHttp --streamableHttpPath /mcp --port 3101 --cors",
+    "check": "node --check src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "sucrase": "^3.35.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "supergateway": "^3.4.3"
+  }
+}

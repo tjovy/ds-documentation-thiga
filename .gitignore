@@ -1,0 +1,9 @@
+node_modules
+dist
+storybook-static
+.DS_Store
+.env.local
+tokens.figma-export.json
+build/tokens.normalized.json
+n8n/backups/
+figma-token-exporter/dist/

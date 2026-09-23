@@ -1,0 +1,74 @@
+:root {
+  font-family: var(--core-font-family-sans), sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+.demo {
+  align-items: center;
+  background: var(--semantic-color-bg-page);
+  color: var(--semantic-color-text-primary);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--core-space-32);
+}
+
+.demo__content {
+  max-width: 420px;
+  width: 100%;
+}
+
+.demo__eyebrow {
+  color: var(--semantic-color-text-muted);
+  font-size: var(--core-font-size-12);
+  font-weight: var(--core-font-weight-medium);
+  margin: 0 0 var(--core-space-8);
+}
+
+h1 {
+  font-size: var(--core-font-size-32);
+  line-height: var(--core-font-line-height-40);
+  margin: 0;
+}
+
+p {
+  color: var(--semantic-color-text-secondary);
+  font-size: var(--core-font-size-16);
+  line-height: var(--core-font-line-height-24);
+  margin: var(--core-space-12) 0 var(--core-space-24);
+}
+
+button {
+  background: var(--semantic-color-action-primary-default);
+  border: var(--core-space-1) solid var(--semantic-color-border-brand);
+  border-radius: var(--core-radius-8);
+  color: var(--semantic-color-text-on-brand);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--core-font-size-16);
+  font-weight: var(--core-font-weight-medium);
+  line-height: var(--core-font-line-height-24);
+  min-height: var(--core-space-48);
+  padding: var(--core-space-12) var(--core-space-20);
+}
+
+button:hover {
+  background: var(--semantic-color-action-primary-hover);
+}
+
+button:focus-visible {
+  outline: var(--core-space-2) solid var(--semantic-color-focus-ring);
+  outline-offset: var(--core-space-4);
+}
+
+code {
+  color: var(--semantic-color-text-muted);
+  display: block;
+  font-size: var(--core-font-size-12);
+  line-height: var(--core-font-line-height-16);
+  margin-top: var(--core-space-16);
+  overflow-wrap: anywhere;
+}

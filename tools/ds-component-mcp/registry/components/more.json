@@ -1,0 +1,6 @@
+{
+  "name": "more", "title": "Icon/More", "htmlTag": "span", "role": "img", "requiresFigma": true, "interactive": false,
+  "summary": "Icône Thiga More.", "allowedProps": ["className", "aria-label"], "slots": [], "variants": [], "sizes": [], "states": [],
+  "usageRules": {"do": ["Associer à un bouton pour ouvrir un menu d’actions."], "dont": ["Ne pas rendre le span directement cliquable."]},
+  "accessibility": ["Le bouton parent doit annoncer l’action attendue."], "previewMatrix": {}, "requiredTokenPaths": []
+}

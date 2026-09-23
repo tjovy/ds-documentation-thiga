@@ -1,0 +1,6 @@
+{
+  "name": "check", "title": "Icon/Check", "htmlTag": "span", "role": "img", "requiresFigma": true, "interactive": false,
+  "summary": "Icône Thiga Check.", "allowedProps": ["className", "aria-label"], "slots": [], "variants": [], "sizes": [], "states": [],
+  "usageRules": {"do": ["Utiliser pour confirmer un état positif."], "dont": ["Ne pas remplacer un texte essentiel par l’icône seule."]},
+  "accessibility": ["Fournir aria-label si l’icône porte du sens."], "previewMatrix": {}, "requiredTokenPaths": []
+}

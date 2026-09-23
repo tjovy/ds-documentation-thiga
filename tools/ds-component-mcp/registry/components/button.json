@@ -1,0 +1,25 @@
+{
+  "name": "button",
+  "title": "Button",
+  "htmlTag": "button",
+  "role": null,
+  "requiresFigma": true,
+  "interactive": true,
+  "summary": "Bouton d’action Thiga décliné en styles Primary et Secondary.",
+  "allowedProps": ["children", "variant", "size", "disabled", "onClick", "type", "icon", "className"],
+  "slots": ["children", "icon"],
+  "variants": ["primary", "secondary"],
+  "sizes": ["sm", "md", "lg"],
+  "states": ["default", "hover", "pressed", "disabled"],
+  "usageRules": {
+    "do": ["Utiliser Primary pour l’action dominante.", "Utiliser l’attribut disabled natif."],
+    "dont": ["Ne pas utiliser le bouton comme lien.", "Ne pas inventer de style absent de Figma."]
+  },
+  "accessibility": ["Conserver un élément <button>.", "Préserver un focus visible.", "Toujours fournir un libellé accessible."],
+  "previewMatrix": {"sizeAxis": "size", "variantAxis": "variant", "stateAxis": "state"},
+  "renderRequirements": {
+    "mustInclude": ["Afficher les 24 combinaisons Figma.", "Respecter Primary, Secondary, sm, md, lg et les quatre états."],
+    "forbiddenPatterns": ["Aucune variante ghost ou danger.", "Aucune couleur codée en dur."]
+  },
+  "requiredTokenPaths": []
+}

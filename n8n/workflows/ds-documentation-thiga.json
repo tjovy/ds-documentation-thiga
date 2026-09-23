@@ -1,0 +1,488 @@
+[
+  {
+    "updatedAt": "2026-09-23T12:19:01.879Z",
+    "createdAt": "2026-07-18T09:40:34.346Z",
+    "id": "TlWx5OmmkqEk5yoA",
+    "name": "ds-documentation-thiga",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          800,
+          144
+        ],
+        "id": "91aaf7e2-5f2d-4b8f-b6e8-e899df2bc0f6",
+        "name": "Process One at a Time"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -544,
+          48
+        ],
+        "id": "3336beb9-7a95-4557-87e6-58dbe9cb9490",
+        "name": "When clicking 'Execute workflow'"
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "get",
+          "owner": {
+            "__rl": true,
+            "value": "tjovy",
+            "mode": "list",
+            "cachedResultName": "tjovy",
+            "cachedResultUrl": "https://github.com/tjovy"
+          },
+          "repository": {
+            "__rl": true,
+            "value": "ds-documentation-thiga",
+            "mode": "list",
+            "cachedResultName": "ds-documentation-thiga",
+            "cachedResultUrl": "https://github.com/tjovy/ds-documentation-thiga"
+          },
+          "filePath": "tokens-docs.json",
+          "binaryPropertyName": "docs",
+          "additionalParameters": {
+            "reference": "={{ $(\"Get source main ref\").first().json.object.sha }}"
+          }
+        },
+        "type": "n8n-nodes-base.github",
+        "typeVersion": 1.1,
+        "position": [
+          -96,
+          144
+        ],
+        "id": "d5f8d499-dbbe-461b-a157-6c46b695a28b",
+        "name": "Get tokens-docs.json",
+        "retryOnFail": false,
+        "webhookId": "f85289ba-be94-4baa-b381-26b5b1dc0d60",
+        "credentials": {
+          "githubApi": {
+            "id": "0VPNkKqc7Pju3PKI",
+            "name": "git-demo-thiga"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "operation": "get",
+          "owner": {
+            "__rl": true,
+            "value": "tjovy",
+            "mode": "list",
+            "cachedResultName": "tjovy",
+            "cachedResultUrl": "https://github.com/tjovy"
+          },
+          "repository": {
+            "__rl": true,
+            "value": "ds-documentation-thiga",
+            "mode": "list",
+            "cachedResultName": "ds-documentation-thiga",
+            "cachedResultUrl": "https://github.com/tjovy/ds-documentation-thiga"
+          },
+          "filePath": "tokens.json",
+          "additionalParameters": {
+            "reference": "={{ $(\"Get source main ref\").first().json.object.sha }}"
+          }
+        },
+        "type": "n8n-nodes-base.github",
+        "typeVersion": 1.1,
+        "position": [
+          128,
+          144
+        ],
+        "id": "03ad21ba-60f3-4cce-8fa0-e7a6adaa8c0d",
+        "name": "Get tokens.json",
+        "webhookId": "e9e6989c-753c-474e-82b1-0afd85ead144",
+        "credentials": {
+          "githubApi": {
+            "id": "0VPNkKqc7Pju3PKI",
+            "name": "git-demo-thiga"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const WORKFLOW_VERSION = 'ssot-v6';\nconst RENDERER_VERSION = 'figma-tree-v4';\nconst MAX_COMPONENTS_PER_RUN = (() => {\n  const raw = String($env.MAX_COMPONENTS_PER_RUN || '').trim();\n  if (!raw) return Infinity;\n  const value = Number(raw);\n  return Number.isFinite(value) && value > 0 ? Math.floor(value) : Infinity;\n})();\nconst MCP_ENDPOINT = 'http://127.0.0.1:3101/mcp';\nconst CANONICAL_TOKEN_KEYS = new Set(['core', 'semantic', 'typography', 'component']);\nconst REVIEW_BRANCH_SCAN_LIMIT = 12;\n\nfunction isObject(value) {\n  return !!value && typeof value === 'object' && !Array.isArray(value);\n}\n\nfunction isTokenNode(node) {\n  return isObject(node) && ('value' in node || '$value' in node);\n}\n\nfunction toCamelSegment(segment) {\n  return String(segment).replace(/-([a-z0-9])/gi, (_, char) => char.toUpperCase());\n}\n\nfunction normalizeTokenReference(value) {\n  if (typeof value !== 'string') return value;\n  const match = value.trim().match(/^\\{(.+)\\}$/);\n  if (!match) return value;\n  return `{${match[1].split('.').filter(Boolean).map(toCamelSegment).join('.')}}`;\n}\n\nfunction normalizeTokenTree(node) {\n  if (!isObject(node)) return node;\n  if (isTokenNode(node)) {\n    const output = { value: normalizeTokenReference(node.value ?? node.$value) };\n    if (node.type || node.$type) output.type = node.type ?? node.$type;\n    if (node.description || node.$description) output.description = node.description ?? node.$description;\n    return output;\n  }\n\n  const output = {};\n  for (const [rawKey, value] of Object.entries(node)) {\n    if (rawKey === '$extensions') continue;\n    const key = rawKey.startsWith('$') ? rawKey : toCamelSegment(rawKey);\n    output[key] = normalizeTokenTree(value);\n  }\n  return output;\n}\n\nfunction mergeTokenTree(target, source) {\n  if (!isObject(source)) return target;\n  for (const [key, value] of Object.entries(source)) {\n    if (isObject(value) && isObject(target[key]) && !isTokenNode(value) && !isTokenNode(target[key])) {\n      mergeTokenTree(target[key], value);\n    } else {\n      target[key] = value;\n    }\n  }\n  return target;\n}\n\nfunction readTokenSet(rawTokens, setPath) {\n  if (!isObject(rawTokens)) return null;\n  if (rawTokens[setPath]) return rawTokens[setPath];\n  return setPath.split('/').filter(Boolean).reduce((current, segment) => {\n    if (!isObject(current) || !current[segment]) return null;\n    return current[segment];\n  }, rawTokens);\n}\n\nfunction normalizeDesignTokens(rawTokens) {\n  const normalized = {};\n  if (rawTokens?.$metadata) normalized.$metadata = rawTokens.$metadata;\n\n  for (const key of CANONICAL_TOKEN_KEYS) {\n    if (isObject(rawTokens?.[key])) normalized[key] = normalizeTokenTree(rawTokens[key]);\n  }\n\n  const primitive = readTokenSet(rawTokens, 'Primitive/Value') || readTokenSet(rawTokens, 'primitive/value');\n  const space = readTokenSet(rawTokens, 'Space/Value') || readTokenSet(rawTokens, 'space/value');\n  const radius = readTokenSet(rawTokens, 'Radius/Value') || readTokenSet(rawTokens, 'radius/value');\n  const typography = readTokenSet(rawTokens, 'Typography/Value') || readTokenSet(rawTokens, 'typography/value');\n  const semantic = readTokenSet(rawTokens, 'Semantic/Dark') || readTokenSet(rawTokens, 'semantic/dark');\n  const component = readTokenSet(rawTokens, 'Component/Value') ||\n    readTokenSet(rawTokens, 'component/value') ||\n    readTokenSet(rawTokens, 'component/component');\n\n  if (primitive) mergeTokenTree(normalized.core ||= {}, normalizeTokenTree(primitive));\n  if (space?.space) mergeTokenTree(normalized.core ||= {}, { space: normalizeTokenTree(space.space) });\n  if (radius?.radius) mergeTokenTree(normalized.core ||= {}, { radius: normalizeTokenTree(radius.radius) });\n  if (typography?.font) mergeTokenTree(normalized.core ||= {}, { font: normalizeTokenTree(typography.font) });\n  if (typography?.typography) normalized.typography = normalizeTokenTree(typography.typography);\n  if (semantic) normalized.semantic = normalizeTokenTree(semantic);\n  if (component) normalized.component = normalizeTokenTree(component);\n\n  return normalized;\n}\n\nfunction stableStringify(value) {\n  if (Array.isArray(value)) {\n    return `[${value.map((item) => stableStringify(item)).join(',')}]`;\n  }\n\n  if (value && typeof value === 'object') {\n    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;\n  }\n\n  return JSON.stringify(value ?? null);\n}\n\nfunction simpleHash(value) {\n  const input = typeof value === 'string' ? value : stableStringify(value);\n  let hash = 2166136261;\n  for (let index = 0; index < input.length; index += 1) {\n    hash ^= input.charCodeAt(index);\n    hash = Math.imul(hash, 16777619);\n  }\n  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;\n}\n\nfunction getNodeByPath(root, path) {\n  return String(path || '')\n    .split('.')\n    .filter(Boolean)\n    .reduce((current, key) => {\n      if (!current || typeof current !== 'object') {\n        return undefined;\n      }\n      return current[key];\n    }, root);\n}\n\nfunction componentConfigForHash(componentSnapshot) {\n  if (!isObject(componentSnapshot)) return componentSnapshot;\n  const { $figma, ...componentConfig } = componentSnapshot;\n  return componentConfig;\n}\n\nfunction isLegacyDoc(markdown) {\n  const text = String(markdown || '');\n  const normalized = text.toLowerCase();\n\n  if (!text.trim()) return true;\n  if (!normalized.includes('## description')) return true;\n  if (!normalized.includes('## spec')) return true;\n  if (!normalized.includes('## do')) return true;\n  if (!normalized.includes('code interactif')) return true;\n  if (normalized.includes('<token_mapping>') || normalized.includes('<css>') || normalized.includes('<react>')) return true;\n  if (normalized.includes('function buttondemo()')) return true;\n  if (normalized.includes('--component-button-color-bg-')) return true;\n  if (normalized.includes('card · ${variant} · ${size}')) return true;\n\n  return false;\n}\n\nfunction parseSseJson(raw) {\n  const text = typeof raw === 'string' ? raw : JSON.stringify(raw);\n  const lines = text\n    .split('\\n')\n    .map((line) => line.trim())\n    .filter(Boolean);\n  const dataLine = lines.find((line) => line.startsWith('data: '));\n  if (!dataLine) {\n    throw new Error('Reponse MCP invalide: data manquante');\n  }\n  return JSON.parse(dataLine.slice(6));\n}\n\nasync function callMcpTool(name, args) {\n  const raw = await this.helpers.httpRequest({\n    method: 'POST',\n    url: MCP_ENDPOINT,\n    headers: {\n      'Content-Type': 'application/json',\n      Accept: 'application/json, text/event-stream',\n    },\n    body: JSON.stringify({\n      jsonrpc: '2.0',\n      id: Date.now(),\n      method: 'tools/call',\n      params: {\n        name,\n        arguments: args,\n      },\n    }),\n    returnFullResponse: false,\n  });\n\n  const payload = parseSseJson(raw);\n  return payload.result?.structuredContent || null;\n}\n\nasync function resolveComponentContext(componentName, tokens, sourceRef) {\n  return callMcpTool.call(this, 'get_component_generation_context', {\n    name: componentName,\n    tokens,\n    sourceRef,\n  });\n}\n\nfunction referencedTokenPathsFromContext(context) {\n  const referencedTokens = Array.isArray(context?.contract?.referencedTokens)\n    ? context.contract.referencedTokens\n    : [];\n\n  return referencedTokens\n    .map((item) => item?.tokenPath)\n    .filter(Boolean);\n}\n\nfunction figmaSnapshotFromContext(context) {\n  if (!context?.figma?.available) {\n    return null;\n  }\n\n  return {\n    matchedKey: context.figma.matchedKey || null,\n    complete: context.figma.complete === true,\n    expectedVariantCount: context.figma.expectedVariantCount ?? null,\n    actualVariantCount: context.figma.actualVariantCount ?? null,\n    blueprint: context.figma.blueprint || null,\n    component: {\n      htmlTag: context.component?.htmlTag || null,\n      rootClass: context.component?.rootClass || null,\n      autoDiscovered: context.component?.autoDiscovered === true,\n      semanticHtmlKnown: context.component?.semanticHtmlKnown !== false,\n      devContractSource: context.component?.devContractSource || null,\n      role: context.component?.role || null,\n      interactive: context.component?.interactive === true,\n      allowedProps: context.component?.allowedProps || [],\n      slots: context.component?.slots || [],\n      axes: context.component?.axes || {},\n      variants: context.component?.variants || [],\n      sizes: context.component?.sizes || [],\n      states: context.component?.states || [],\n      renderRequirements: context.component?.renderRequirements || null,\n    },\n  };\n}\n\nfunction shouldSkipForFigma(componentName, context) {\n  if (!context?.component?.requiresFigma) {\n    return null;\n  }\n\n  if (!context.figma?.available) {\n    return `Figma indisponible pour ${componentName}`;\n  }\n\n  if (!context.figma?.complete) {\n    return `Cache Figma incomplet pour ${componentName}: ${context.figma?.actualVariantCount || 0}/${context.figma?.expectedVariantCount || '?'}`;\n  }\n\n  return null;\n}\n\nfunction parseJsonResponse(value) {\n  if (typeof value !== 'string') return value;\n  return JSON.parse(value);\n}\n\nasync function reviewedSourceHashes() {\n  // With a capped component batch, main still contains the old docs while a\n  // review branch is pending. Scan a small number of recent review branches\n  // so each subsequent run picks the next changed component instead of\n  // repeatedly paying to regenerate the first one.\n  try {\n    const refs = parseJsonResponse(await this.helpers.httpRequest({\n      method: 'GET',\n      url: 'https://api.github.com/repos/tjovy/ds-documentation-thiga/git/matching-refs/heads/ai/',\n      headers: { Accept: 'application/vnd.github+json' },\n      returnFullResponse: false,\n    }));\n    const branches = (Array.isArray(refs) ? refs : [])\n      .map((entry) => ({\n        name: String(entry?.ref || '').replace('refs/heads/', ''),\n        sha: entry?.object?.sha || null,\n      }))\n      .filter((entry) => entry.name.startsWith('ai/') && entry.sha)\n      .sort((left, right) => right.name.localeCompare(left.name))\n      .slice(0, REVIEW_BRANCH_SCAN_LIMIT);\n    const sourceHashes = new Set();\n    const figmaHashes = new Set();\n\n    for (const branch of branches) {\n      try {\n        const content = parseJsonResponse(await this.helpers.httpRequest({\n          method: 'GET',\n          url: `https://api.github.com/repos/tjovy/ds-documentation-thiga/contents/tokens-docs.json?ref=${encodeURIComponent(branch.sha)}`,\n          headers: { Accept: 'application/vnd.github+json' },\n          returnFullResponse: false,\n        }));\n        const encoded = String(content?.content || '').replace(/\\s+/g, '');\n        if (!encoded) continue;\n        const branchDocs = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));\n        for (const [componentName, entry] of Object.entries(branchDocs?.component || {})) {\n          const sourceHash = entry?._meta?.sourceHash;\n          if (sourceHash) sourceHashes.add(`${componentName}:${sourceHash}`);\n          const figmaHash = entry?._meta?.figmaHash;\n          if (\n            figmaHash\n            && entry?._meta?.workflowVersion === WORKFLOW_VERSION\n            && entry?._meta?.rendererVersion === RENDERER_VERSION\n          ) {\n            figmaHashes.add(`${componentName}:${figmaHash}`);\n          }\n        }\n      } catch (error) {\n        console.warn(`Branche de revue ignoree (${branch.name}): ${error.message}`);\n      }\n    }\n\n    return { sourceHashes, figmaHashes };\n  } catch (error) {\n    console.warn(`Impossible de lire les branches de revue: ${error.message}`);\n    return { sourceHashes: new Set(), figmaHashes: new Set() };\n  }\n}\n\ntry {\n  const bufferTokens = await this.helpers.getBinaryDataBuffer(0, 'data', 'Get tokens.json');\n  const rawTokens = JSON.parse(bufferTokens.toString('utf8'));\n  const tokens = normalizeDesignTokens(rawTokens);\n  const sourceRef = $('Get source main ref').first()?.json?.object?.sha || 'main';\n\n  let docs = {};\n  try {\n    const bufferDocs = await this.helpers.getBinaryDataBuffer(0, 'docs', 'Get tokens-docs.json');\n    docs = JSON.parse(bufferDocs.toString('utf8'));\n  } catch (error) {\n    docs = {};\n  }\n\n  const items = [];\n  const blockedComponents = [];\n  const completedReviews = Number.isFinite(MAX_COMPONENTS_PER_RUN)\n    ? await reviewedSourceHashes.call(this)\n    : { sourceHashes: new Set(), figmaHashes: new Set() };\n  const components = tokens.component || {};\n  await callMcpTool.call(this, 'refresh_figma_context', {});\n  const inventory = await callMcpTool.call(this, 'list_components', { tokens });\n  const componentNames = [...new Set([\n    ...Object.keys(components),\n    ...(inventory?.components || []).map((component) => component?.name).filter(Boolean),\n  ])].sort();\n\n  for (const componentName of componentNames) {\n    const existingEntry = docs.component?.[componentName] || {};\n    const existingMarkdown = existingEntry.description || '';\n    const existingMeta = existingEntry._meta || {};\n    const context = await resolveComponentContext.call(this, componentName, tokens, sourceRef);\n    const figmaSkipReason = shouldSkipForFigma(componentName, context);\n    if (figmaSkipReason) {\n      blockedComponents.push({ componentName, reason: figmaSkipReason });\n      console.warn(figmaSkipReason);\n      continue;\n    }\n    const metaPaths = Array.isArray(existingMeta?.referencedTokenPaths)\n      ? existingMeta.referencedTokenPaths.filter(Boolean)\n      : [];\n    const referencedTokenPaths = metaPaths.length > 0 ? metaPaths : referencedTokenPathsFromContext(context);\n\n    const componentSnapshot = components[componentName] || {};\n    const componentConfig = componentConfigForHash(componentSnapshot);\n    const referencedSnapshot = referencedTokenPaths.map((tokenPath) => ({\n      tokenPath,\n      value: getNodeByPath(tokens, tokenPath),\n    }));\n\n    const componentTokenHash = simpleHash(componentConfig);\n    const referencedTokenHash = simpleHash(referencedSnapshot);\n    const figmaHash = simpleHash(figmaSnapshotFromContext(context));\n    const currentSourceHash = simpleHash({\n      workflowVersion: WORKFLOW_VERSION,\n      rendererVersion: RENDERER_VERSION,\n      componentTokenHash,\n      referencedTokenHash,\n      figmaHash,\n    });\n\n    const reasons = [];\n    if (isLegacyDoc(existingMarkdown)) reasons.push('legacy_doc');\n    if (!existingMeta || typeof existingMeta !== 'object' || !existingMeta.sourceHash) reasons.push('missing_meta');\n    if ((existingMeta.workflowVersion || '') !== WORKFLOW_VERSION) reasons.push('workflow_version_changed');\n    if ((existingMeta.rendererVersion || '') !== RENDERER_VERSION) reasons.push('renderer_version_changed');\n    if (existingMeta.componentTokenHash && existingMeta.componentTokenHash !== componentTokenHash) reasons.push('component_tokens_changed');\n    if (referencedTokenPaths.length > 0 && existingMeta.referencedTokenHash && existingMeta.referencedTokenHash !== referencedTokenHash) reasons.push('referenced_tokens_changed');\n    if (existingMeta.figmaHash && existingMeta.figmaHash !== figmaHash) reasons.push('figma_blueprint_changed');\n    if (existingMeta.sourceHash && existingMeta.sourceHash !== currentSourceHash) reasons.push('source_hash_changed');\n\n    const isMetadataOnlyComponent = isObject(componentSnapshot)\n      && Object.keys(componentSnapshot).every((key) => key === '$figma');\n    const alreadyReviewed = completedReviews.sourceHashes.has(`${componentName}:${currentSourceHash}`)\n      || (isMetadataOnlyComponent && completedReviews.figmaHashes.has(`${componentName}:${figmaHash}`));\n    if (reasons.length > 0 && alreadyReviewed) {\n      console.log(`${componentName} deja genere dans une branche de revue au meme etat source.`);\n      continue;\n    }\n\n    if (reasons.length > 0) {\n      items.push({\n        json: {\n          componentName,\n          tokenPath: `component.${componentName}`,\n          rawComponentTokens: componentSnapshot,\n          existingMarkdown,\n          previousDocs: docs,\n          sourceTokens: tokens,\n          sourceRef,\n          sourceComparison: {\n            workflowVersion: WORKFLOW_VERSION,\n            rendererVersion: RENDERER_VERSION,\n            reasons,\n            componentTokenHash,\n            referencedTokenPaths,\n            referencedTokenHash,\n            figmaHash,\n            currentSourceHash,\n            previousSourceHash: existingMeta.sourceHash || null,\n            previousFigmaHash: existingMeta.figmaHash || null,\n          },\n        },\n      });\n    }\n  }\n\n  if (!items.length) {\n    const blockedMessage = blockedComponents.length\n      ? ` Composants bloques sans appel OpenAI: ${JSON.stringify(blockedComponents)}`\n      : '';\n    console.log(`Aucune difference exploitable entre tokens.json et tokens-docs.json. Aucun appel OpenAI.${blockedMessage}`);\n    return [];\n  }\n\n  return Number.isFinite(MAX_COMPONENTS_PER_RUN)\n    ? items.slice(0, MAX_COMPONENTS_PER_RUN)\n    : items;\n} catch (error) {\n  return [{ json: { error: 'filter_failed', details: error.message } }];\n}\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          352,
+          144
+        ],
+        "id": "cf8974d1-a83f-471d-93ad-35ff9985bc0e",
+        "name": "Filtrer les composants incomplets"
+      },
+      {
+        "parameters": {
+          "jsCode": "const MCP_ENDPOINT = 'http://127.0.0.1:3101/mcp';\nconst MCP_TOOL_NAME = 'get_component_generation_context';\nconst MAX_FIGMA_CACHE_AGE_HOURS = Number($env.MAX_FIGMA_CACHE_AGE_HOURS || 168);\n\nfunction parseSseJson(raw) {\n  if (raw && typeof raw === 'object' && !Buffer.isBuffer(raw)) {\n    return raw;\n  }\n\n  const text = Buffer.isBuffer(raw) ? raw.toString('utf8') : String(raw || '');\n\n  try {\n    return JSON.parse(text);\n  } catch {\n    // SSE fallback handled below.\n  }\n\n  const dataChunks = text\n    .split('\\n')\n    .map((line) => line.trim())\n    .filter((line) => line.startsWith('data:'))\n    .map((line) => line.slice(5).trim())\n    .filter(Boolean)\n    .filter((line) => line !== '[DONE]');\n\n  if (!dataChunks.length) {\n    throw new Error('Reponse MCP invalide: payload JSON ou data SSE manquant');\n  }\n\n  for (let index = dataChunks.length - 1; index >= 0; index -= 1) {\n    try {\n      return JSON.parse(dataChunks[index]);\n    } catch {\n      // Keep searching until a valid JSON payload is found.\n    }\n  }\n\n  throw new Error('Reponse MCP invalide: aucun bloc data SSE JSON exploitable');\n}\n\nfunction extractStructuredContent(payload, toolName) {\n  if (!payload || typeof payload !== 'object') {\n    throw new Error(`Reponse MCP invalide pour ${toolName}: payload vide`);\n  }\n\n  if (payload.error) {\n    const message = payload.error.message || JSON.stringify(payload.error);\n    throw new Error(`Erreur MCP ${toolName}: ${message}`);\n  }\n\n  const result = payload.result;\n  if (!result || typeof result !== 'object') {\n    throw new Error(`Reponse MCP invalide pour ${toolName}: result manquant`);\n  }\n\n  return result.structuredContent ?? null;\n}\n\nasync function callMcpTool(name, args) {\n  const raw = await this.helpers.httpRequest({\n    method: 'POST',\n    url: MCP_ENDPOINT,\n    headers: {\n      'Content-Type': 'application/json',\n      Accept: 'application/json, text/event-stream',\n    },\n    body: JSON.stringify({\n      jsonrpc: '2.0',\n      id: Date.now(),\n      method: 'tools/call',\n      params: {\n        name,\n        arguments: args,\n      },\n    }),\n    returnFullResponse: false,\n    timeout: 30000,\n  });\n\n  const payload = parseSseJson(raw);\n  return extractStructuredContent(payload, name);\n}\n\nconst incomingItems = $input.all();\nconst outputItems = [];\n\nfor (const item of incomingItems) {\n  const data = item?.json || {};\n  const componentName = String(data.componentName || '').trim();\n\n  if (data.error) {\n    throw new Error(`Filtre composants en erreur: ${data.details || data.error}`);\n  }\n\n  if (data.stop || !componentName) {\n    console.log(data.message || 'Aucun composant a enrichir par le contexte MCP.');\n    continue;\n  }\n\n  const context = await callMcpTool.call(this, MCP_TOOL_NAME, {\n    name: componentName,\n    tokens: data.sourceTokens,\n    sourceRef: data.sourceRef,\n  });\n\n  if (!context || !context.component || !context.component.name) {\n    throw new Error(`Contexte MCP incomplet pour ${componentName}`);\n  }\n\n  if (String(context.component.name).toLowerCase() !== componentName.toLowerCase()) {\n    throw new Error(`Contexte MCP incoherent: demande=${componentName}, reponse=${context.component.name}`);\n  }\n\n  if (!context.component.htmlTag || !context.component.rootClass) {\n    throw new Error(`Contrat MCP incomplet pour ${componentName}: htmlTag/rootClass manquant`);\n  }\n\n  if (context.component.requiresFigma && !context.figma?.available) {\n    throw new Error(`Figma indisponible pour ${componentName} alors que le workflow exige un contexte Figma`);\n  }\n\n  if (context.component.requiresFigma && !context.figma?.complete) {\n    throw new Error(\n      `Cache Figma incomplet pour ${componentName}: ${context.figma?.actualVariantCount || 0}/${context.figma?.expectedVariantCount || '?'} variantes`,\n    );\n  }\n\n  const cachedAt = Date.parse(context.figma?.cachedAt || '');\n  const cacheAgeHours = Number.isFinite(cachedAt) ? (Date.now() - cachedAt) / 3600000 : Infinity;\n  if (context.component.requiresFigma && cacheAgeHours > MAX_FIGMA_CACHE_AGE_HOURS) {\n    throw new Error(`Cache Figma trop ancien pour ${componentName}: ${Math.floor(cacheAgeHours)}h`);\n  }\n\n  outputItems.push({\n    json: {\n      ...data,\n      mcpContext: context,\n    },\n  });\n}\n\nreturn outputItems;\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          576,
+          144
+        ],
+        "id": "d0ddd3a4-dd9c-4f5d-b8cb-9445921ecc40",
+        "name": "Get component generation context"
+      },
+      {
+        "parameters": {
+          "jsCode": "const OPENAI_ENDPOINT = 'https://api.openai.com/v1/responses';\nconst MCP_ENDPOINT = 'http://127.0.0.1:3101/mcp';\nconst OPENAI_MODEL = $env.OPENAI_MODEL || 'gpt-5.4-nano';\nconst OPENAI_REASONING_EFFORT = $env.OPENAI_REASONING_EFFORT || 'none';\nconst OPENAI_MAX_OUTPUT_TOKENS = Number($env.OPENAI_MAX_OUTPUT_TOKENS || 2500);\nconst OPENAI_MAX_REPAIR_TOKENS = Number($env.OPENAI_MAX_REPAIR_TOKENS || 1200);\nconst SYSTEM_PROMPT = \"Tu generes la documentation et le code du composant Thiga courant pour `tokens-docs.json` et Storybook `react-live`.\\n\\nLe workflow peut fournir n'importe quel composant nouveau ou modifie. Tu ne dois jamais limiter ta reponse a Button, Card, ou a une liste de composants connus.\\n\\nSource unique des informations composant:\\n- utilise exclusivement le contexte MCP JSON fourni dans le message utilisateur;\\n- n'interprete pas le nom du composant;\\n- n'applique pas de convention generique de design system;\\n- n'invente aucune variante, taille, etat, prop, slot, valeur, couleur, role, classe, tag HTML ou variable CSS.\\n- si `component.semanticHtmlKnown` vaut `false`, n'attribue aucune semantique HTML au composant et mentionne cette limite dans `## Spec`.\\n- si `component.devContractSource` est renseigne, utilise `component.htmlTag`, `component.role`, `component.interactive`, `component.allowedProps` et `component.slots` comme contrat developpeur explicite.\\n\\nSources MCP a suivre, par priorite:\\n1. `figma.blueprint`\\n2. `component`\\n3. `allowedCssVars`\\n4. `tokenValues`\\n5. `jsxBlueprint`\\n\\nSi une information manque, ecris la limite dans `## Spec` et n'essaie pas de la completer.\\n\\nRegles strictes:\\n- Utilise uniquement les variables CSS listees dans `allowedCssVars`.\\n- Interdit: couleur litterale hex/rgb/hsl, URL, fetch, import, export, acces reseau, acces DOM global.\\n- Interdit: fallback CSS du type `var(--x, valeur)`.\\n- Interdit: construire dynamiquement un nom de variable CSS; chaque appel `var(--nom)` doit contenir un nom litteral present dans `allowedCssVars`.\\n- Interdit: declarer des custom properties locales ou des alias (`--bg`, `--w`, etc.); toute chaine commencant par `--` doit etre exactement un nom de `allowedCssVars`.\\n- Pour les matrices, utilise des selecteurs CSS explicites par variante/taille/etat au lieu de transmettre des variables CSS via `style`.\\n- Les valeurs numeriques litterales sont autorisees uniquement lorsqu'elles figurent exactement dans `figma.blueprint` (dimensions, rayon, gap, padding, taille ou hauteur de ligne).\\n- Si aucun token autorise ne resout exactement la valeur Figma, utilise la valeur numerique Figma plutot qu'une valeur de token approximative.\\n- Reproduis exactement les textes et glyphes presents dans `figma.blueprint.textNodes`; ne remplace jamais une icone texte par un autre symbole.\\n- Reproduis l'ordre et les positions des variantes du blueprint Figma. N'ajoute aucun titre d'axe, legende, cellule, cadre ou libelle de demonstration absent du composant Figma.\\n- Le JSX doit compiler dans `react-live`.\\n- Le HTML doit respecter `component.htmlTag`.\\n- La classe racine doit etre exactement `component.rootClass`.\\n- Le role ARIA, les props et les slots doivent venir uniquement de `component.role`, `component.allowedProps` et `component.slots`.\\n- Les axes rendus doivent venir uniquement de `component.axes`, `component.variants`, `component.sizes`, `component.states` ou `figma.blueprint`.\\n- Pour un composant auto-detecte, ne deduis rien depuis `component.name`; utilise seulement les champs MCP explicites.\\n- Le composant expose une API de developpement compacte issue uniquement de `component.allowedProps` et `component.slots` : ne cree jamais une API par calque Figma (`variantIndex`, classes numerotees, `switch` de calques). La matrice Figma peut utiliser des props de preview internes uniquement dans `Demo`.\\n\\nRetourne uniquement du Markdown avec exactement ces titres H2, dans cet ordre:\\n\\n## Description\\n1 ou 2 phrases courtes, uniquement d'apres le MCP.\\n\\n## Spec\\n4 a 6 puces factuelles d'apres Figma, axes, exigences de rendu et tokens MCP.\\n\\n## Do & Don't\\n2 ou 3 Do, puis 2 ou 3 Don't, uniquement d'apres `component.usageRules`, `component.accessibility` et `component.renderRequirements`.\\n\\n## Code interactif (Live Editor)\\nUn seul bloc `jsx`.\\n\\nLe bloc `jsx` doit:\\n- commencer par `const css = \\\\`...\\\\`;`\\n- inclure CSS, helpers si necessaires, composant, puis `const Demo = () => ...`\\n- se terminer exactement par `render(<Demo />);`\\n- afficher toutes les variantes declarees par le MCP dans l'ordre visuel Figma, avec `.map()` lorsque le blueprint le permet\\n- afficher dans chaque variante les contenus exacts du blueprint Figma, jamais le nom technique des axes comme contenu utilisateur\\n- verifier avant de repondre chaque exigence exacte de `component.renderRequirements`, notamment glyphes, textes, dimensions et tailles typographiques\\n- utiliser `component.htmlTag` comme element racine du composant\\n- si `component.htmlTag` vaut `button`, inclure un vrai attribut `disabled` lorsque l'etat MCP le prevoit\\n- rester compact: pas de commentaire long, pas de texte marketing, pas de duplication inutile\";\n\nfunction getApiKey() {\n  const apiKey = $env.OPENAI_API_KEY;\n  if (!apiKey) throw new Error('OPENAI_API_KEY manque dans n8n. Ajoutez-la puis redemarrez n8n.');\n  return apiKey;\n}\n\nfunction parseSseJson(raw) {\n  if (raw && typeof raw === 'object' && !Buffer.isBuffer(raw)) return raw;\n  const text = Buffer.isBuffer(raw) ? raw.toString('utf8') : String(raw || '');\n  try { return JSON.parse(text); } catch {}\n  const chunks = text.split('\\n').map((line) => line.trim()).filter((line) => line.startsWith('data:'));\n  for (let index = chunks.length - 1; index >= 0; index -= 1) {\n    try { return JSON.parse(chunks[index].slice(5).trim()); } catch {}\n  }\n  throw new Error('Reponse MCP invalide');\n}\n\nasync function callMcpTool(name, args) {\n  const raw = await this.helpers.httpRequest({\n    method: 'POST', url: MCP_ENDPOINT,\n    headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },\n    body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name, arguments: args } }),\n    returnFullResponse: false, timeout: 30000,\n  });\n  const payload = parseSseJson(raw);\n  if (payload.error) throw new Error(payload.error.message || 'Erreur MCP');\n  return payload.result?.structuredContent || null;\n}\n\nfunction compactBlueprint(ctx) {\n  const blueprint = ctx.figma?.blueprint || {};\n  return {\n    shell: blueprint.shell,\n    axes: blueprint.axes || {},\n    variants: blueprint.variants || [],\n    textNodes: blueprint.textNodes,\n  };\n}\n\nfunction compactContext(ctx = {}) {\n  const tokenMap = new Map();\n  for (const item of [...(ctx.contract?.componentTokens || []), ...(ctx.contract?.referencedTokens || [])]) {\n    if (item?.cssVar) tokenMap.set(item.cssVar, item.resolvedValue);\n  }\n  const allowedCssVars = Array.isArray(ctx.contract?.allowedCssVars)\n    ? ctx.contract.allowedCssVars\n    : [...tokenMap.keys()];\n  return {\n    source: {\n      type: 'mcp:get_component_generation_context',\n      instruction: 'Do not infer component information outside this JSON payload.',\n    },\n    component: {\n      name: ctx.component?.name, htmlTag: ctx.component?.htmlTag, rootClass: ctx.component?.rootClass,\n      autoDiscovered: ctx.component?.autoDiscovered === true,\n      semanticHtmlKnown: ctx.component?.semanticHtmlKnown !== false,\n      devContractSource: ctx.component?.devContractSource || null,\n      role: ctx.component?.role || null,\n      interactive: ctx.component?.interactive === true,\n      allowedProps: ctx.component?.allowedProps || [],\n      slots: ctx.component?.slots || [],\n      axes: ctx.component?.axes || {},\n      variants: ctx.component?.variants || [], sizes: ctx.component?.sizes || [], states: ctx.component?.states || [],\n      previewMatrix: ctx.component?.previewMatrix, renderRequirements: ctx.component?.renderRequirements,\n      usageRules: ctx.component?.usageRules, accessibility: ctx.component?.accessibility,\n    },\n    figma: { matchedKey: ctx.figma?.matchedKey, cachedAt: ctx.figma?.cachedAt, blueprint: compactBlueprint(ctx) },\n    allowedCssVars,\n    tokenValues: [...tokenMap.entries()],\n    jsxBlueprint: ctx.outputRequirements?.jsxBlueprint,\n  };\n}\n\nfunction extractOutputText(response) {\n  if (typeof response?.output_text === 'string') return response.output_text;\n  for (const item of response?.output || []) {\n    for (const block of item?.content || []) if (typeof block?.text === 'string') return block.text;\n  }\n  return '';\n}\n\nasync function enforceExactPreview(componentName, markdown, data) {\n  const normalized = await callMcpTool.call(this, 'enforce_exact_figma_preview', {\n    name: componentName,\n    markdown,\n    tokens: data.sourceTokens,\n    sourceRef: data.sourceRef,\n  });\n  if (normalized?.error) throw new Error(normalized.error);\n  return {\n    markdown: normalized?.markdown || markdown,\n    preview: {\n      exact: normalized?.exact === true,\n      enforced: normalized?.enforced === true,\n      warning: normalized?.warning || null,\n    },\n  };\n}\n\nfunction retryable(error) {\n  const status = Number(error?.statusCode || error?.response?.status || 0);\n  const code = error?.response?.data?.error?.code || error?.response?.data?.code || error?.code;\n  if (code === 'insufficient_quota' || code === 'invalid_api_key') return false;\n  return status === 429 || status >= 500;\n}\n\nfunction retryableOpenAiResponse(response) {\n  const status = Number(response?.statusCode || 0);\n  const code = response?.body?.error?.code || response?.body?.code;\n  if (code === 'insufficient_quota' || code === 'invalid_api_key') return false;\n  return status === 429 || status >= 500;\n}\n\nfunction formatDetails(value) {\n  if (!value) return '';\n  if (typeof value === 'string') return value;\n  try {\n    return JSON.stringify(value);\n  } catch {\n    return String(value);\n  }\n}\n\nfunction formatOpenAiHttpError(response) {\n  const status = response?.statusCode || 'unknown';\n  const body = response?.body || {};\n  const details = body?.error || body;\n  return `OpenAI API error ${status}: ${formatDetails(details) || 'reponse vide'}`;\n}\n\nfunction formatOpenAiTransportError(error) {\n  const status = error?.statusCode || error?.response?.status || 'unknown';\n  const data = error?.response?.data || error?.error || error?.message || null;\n  return `OpenAI API transport error ${status}: ${formatDetails(data) || 'requete impossible'}`;\n}\n\nasync function requestOpenAi(input, maxOutputTokens) {\n  const body = {\n    model: OPENAI_MODEL, instructions: SYSTEM_PROMPT, input, max_output_tokens: maxOutputTokens,\n    reasoning: { effort: OPENAI_REASONING_EFFORT },\n  };\n  for (let attempt = 0; attempt < 2; attempt += 1) {\n    try {\n      const response = await this.helpers.httpRequest({\n        method: 'POST', url: OPENAI_ENDPOINT,\n        headers: { Authorization: `Bearer ${getApiKey()}`, 'Content-Type': 'application/json' },\n        body, json: true, returnFullResponse: true, ignoreHttpStatusErrors: true, timeout: 180000,\n      });\n      const status = Number(response?.statusCode || 200);\n      if (status >= 400) {\n        if (attempt === 0 && retryableOpenAiResponse(response)) {\n          await new Promise((resolve) => setTimeout(resolve, 1200));\n          continue;\n        }\n        throw new Error(formatOpenAiHttpError(response));\n      }\n      return response.body;\n    } catch (error) {\n      if (String(error?.message || '').startsWith('OpenAI API error ')) throw error;\n      if (!retryable(error)) throw new Error(formatOpenAiTransportError(error));\n      if (attempt) throw new Error(formatOpenAiTransportError(error));\n      await new Promise((resolve) => setTimeout(resolve, 1200));\n    }\n  }\n}\n\nconst outputItems = [];\nfor (const item of $input.all()) {\n  const data = item?.json || {};\n  const componentName = String(data.componentName || '').trim();\n  if (!componentName) continue;\n  const compact = compactContext(data.mcpContext || {});\n  const firstInput = [\n    `Composant: ${componentName}`,\n    'Contexte MCP JSON. Utilise uniquement ce JSON. Ne demande aucun outil. Ne complete rien par interpretation.',\n    JSON.stringify(compact),\n  ].join('\\n');\n  const firstResponse = await requestOpenAi.call(this, firstInput, OPENAI_MAX_OUTPUT_TOKENS);\n  let text = extractOutputText(firstResponse).trim();\n  if (!text) throw new Error(`OpenAI n'a retourne aucun markdown pour ${componentName}`);\n  let previewResult = await enforceExactPreview.call(this, componentName, text, data);\n  text = previewResult.markdown;\n\n  let validation = await callMcpTool.call(this, 'validate_component_markdown', {\n    name: componentName, markdown: text, tokens: data.sourceTokens, sourceRef: data.sourceRef,\n    allowVisualApproximation: Boolean(previewResult.preview.warning),\n  });\n  let repairResponse = null;\n  if (!validation?.valid) {\n    const repairInput = [\n      'Corrige uniquement les erreurs ci-dessous et retourne tout le Markdown final, sans explication autour.',\n      'Reverifie chaque valeur exacte dans component.renderRequirements et figma.blueprint.',\n      'Chaque variable CSS doit etre un appel var(--nom-litteral), jamais un nom construit dynamiquement.',\n      'unknownCssVars doit etre vide: supprime tous les alias et toutes les declarations de custom properties locales; utilise des selecteurs CSS explicites.',\n      `Erreurs MCP:\\n${JSON.stringify(validation?.checks || {})}`,\n      `Contexte MCP JSON:\\n${JSON.stringify(compact)}`,\n      `Sortie invalide:\\n${text}`,\n    ].join('\\n\\n');\n    repairResponse = await requestOpenAi.call(this, repairInput, OPENAI_MAX_REPAIR_TOKENS);\n    text = extractOutputText(repairResponse).trim();\n    previewResult = await enforceExactPreview.call(this, componentName, text, data);\n    text = previewResult.markdown;\n    validation = await callMcpTool.call(this, 'validate_component_markdown', {\n      name: componentName, markdown: text, tokens: data.sourceTokens, sourceRef: data.sourceRef,\n      allowVisualApproximation: Boolean(previewResult.preview.warning),\n    });\n  }\n  if (!validation?.valid) throw new Error(`Validation finale impossible pour ${componentName}: ${JSON.stringify(validation?.checks || {})}`);\n\n  outputItems.push({ json: {\n    text, provider: 'openai', model: OPENAI_MODEL, componentName,\n    preview: previewResult.preview,\n    repairUsed: !!repairResponse,\n    openaiResponseIds: [firstResponse?.id, repairResponse?.id].filter(Boolean),\n    usage: [firstResponse?.usage, repairResponse?.usage].filter(Boolean),\n  } });\n}\nreturn outputItems;\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1024,
+          48
+        ],
+        "id": "053ea1f2-1990-4bac-8de0-26b855714c0a",
+        "name": "OpenAI Low Cost — Generate Markdown"
+      },
+      {
+        "parameters": {
+          "jsCode": "const WORKFLOW_VERSION = 'ssot-v6';\nconst RENDERER_VERSION = 'figma-tree-v4';\nconst MCP_ENDPOINT = 'http://127.0.0.1:3101/mcp';\n// The done output of Loop Over Items contains the generated result of every iteration.\nconst generatedItems = $input.all();\nconst sourceItems = $('Filtrer les composants incomplets').all();\nconst contextItems = $('Get component generation context').all();\n\nfunction formatBranchTimestamp() {\n  const formatter = new Intl.DateTimeFormat('sv-SE', {\n    timeZone: 'Europe/Paris',\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false,\n  });\n\n  const parts = Object.fromEntries(\n    formatter.formatToParts(new Date()).map((part) => [part.type, part.value])\n  );\n\n  return `${parts.year}-${parts.month}-${parts.day}-${parts.hour}-${parts.minute}-${parts.second}-${Date.now().toString(36).slice(-5)}`;\n}\n\nfunction parseSseJson(raw) {\n  const text = typeof raw === 'string' ? raw : JSON.stringify(raw);\n  const lines = text\n    .split('\\n')\n    .map((line) => line.trim())\n    .filter(Boolean);\n  const dataLine = lines.find((line) => line.startsWith('data: '));\n  if (!dataLine) {\n    throw new Error('Reponse MCP invalide: data manquante');\n  }\n  return JSON.parse(dataLine.slice(6));\n}\n\nfunction getModelText(payload) {\n  if (!payload) return '';\n  if (typeof payload.output_text === 'string') return payload.output_text;\n  if (typeof payload.text === 'string') return payload.text;\n  if (typeof payload.content === 'string') return payload.content;\n  if (Array.isArray(payload.content)) {\n    const textBlock = payload.content.find((block) => block?.type === 'text' && typeof block.text === 'string');\n    if (textBlock) return textBlock.text;\n  }\n  if (typeof payload.output === 'string') return payload.output;\n  if (Array.isArray(payload.output)) {\n    const message = payload.output.find((item) => item?.type === 'message' && Array.isArray(item.content));\n    const textBlock = message?.content?.find((block) => typeof block?.text === 'string');\n    if (textBlock) return textBlock.text;\n  }\n  if (payload.message?.content) {\n    if (typeof payload.message.content === 'string') return payload.message.content;\n    if (Array.isArray(payload.message.content)) {\n      const textBlock = payload.message.content.find((block) => block?.type === 'text' && typeof block.text === 'string');\n      if (textBlock) return textBlock.text;\n    }\n  }\n  return '';\n}\n\nfunction sanitizeMarkdown(markdown) {\n  const text = String(markdown || '').trim();\n  if (!text) return '';\n\n  const fenceCount = (text.match(/```/g) || []).length;\n  if (fenceCount % 2 === 1) {\n    return `${text}\\n\\`\\`\\`\\n`;\n  }\n\n  return text;\n}\n\nasync function callMcpTool(name, args) {\n  const raw = await this.helpers.httpRequest({\n    method: 'POST',\n    url: MCP_ENDPOINT,\n    headers: {\n      'Content-Type': 'application/json',\n      Accept: 'application/json, text/event-stream',\n    },\n    body: JSON.stringify({\n      jsonrpc: '2.0',\n      id: Date.now(),\n      method: 'tools/call',\n      params: {\n        name,\n        arguments: args,\n      },\n    }),\n    returnFullResponse: false,\n  });\n\n  const payload = parseSseJson(raw);\n  return payload.result?.structuredContent || null;\n}\n\nfunction toContextPayload(raw) {\n  return raw?.json?.mcpContext ?? raw?.json?.structuredContent ?? raw?.json?.content ?? raw?.json ?? {};\n}\n\nconst previousDocs = JSON.parse(JSON.stringify(sourceItems[0]?.json?.previousDocs || {}));\nif (!previousDocs.component) {\n  previousDocs.component = {};\n}\n\nconst expectedComponents = sourceItems\n  .map((item) => item?.json?.componentName)\n  .filter(Boolean);\nconst generatedByComponent = new Map(\n  generatedItems\n    .map((item) => item?.json || {})\n    .filter((item) => item.componentName)\n    .map((item) => [item.componentName, item]),\n);\nconst contextByComponent = new Map(\n  contextItems\n    .map((item) => item?.json || {})\n    .filter((item) => item.componentName)\n    .map((item) => [item.componentName, item]),\n);\nconst validComponents = [];\nconst invalidComponents = [];\n\nfor (const source of sourceItems) {\n  const sourceItem = source?.json || {};\n  const componentName = sourceItem.componentName || null;\n  const generated = componentName ? generatedByComponent.get(componentName) : null;\n  const markdown = sanitizeMarkdown(getModelText(generated));\n  const context = toContextPayload(componentName ? contextByComponent.get(componentName) : null);\n  const comparison = sourceItem.sourceComparison || {};\n  const referencedTokenPaths = comparison.referencedTokenPaths || [];\n  const componentTokenHash = comparison.componentTokenHash;\n  const referencedTokenHash = comparison.referencedTokenHash;\n  const figmaHash = comparison.figmaHash;\n  const sourceHash = comparison.currentSourceHash;\n\n  if (!componentName || !markdown) {\n    invalidComponents.push({\n      componentName: componentName || 'unknown',\n      reason: 'empty_markdown',\n    });\n    continue;\n  }\n\n  const validation = await callMcpTool.call(this, 'validate_component_markdown', {\n    name: componentName,\n    markdown,\n    tokens: sourceItem.sourceTokens,\n    sourceRef: sourceItem.sourceRef,\n    allowVisualApproximation: Boolean(generated?.preview?.warning),\n  });\n\n  if (!validation?.valid) {\n    invalidComponents.push({\n      componentName,\n      reason: 'mcp_validation_failed',\n      checks: validation?.checks || null,\n      markdownPreview: markdown.slice(0, 800),\n    });\n    continue;\n  }\n\n  if (!previousDocs.component[componentName]) {\n    previousDocs.component[componentName] = {};\n  }\n\n  previousDocs.component[componentName].description = markdown;\n  previousDocs.component[componentName]._meta = {\n    workflowVersion: WORKFLOW_VERSION,\n    rendererVersion: comparison.rendererVersion || RENDERER_VERSION,\n    generatedAt: new Date().toISOString(),\n    sourceHash,\n    componentTokenHash,\n    referencedTokenHash,\n    figmaHash,\n    referencedTokenPaths,\n    figmaMatchedKey: context.figma?.matchedKey || null,\n    figmaCachedAt: context.figma?.cachedAt || null,\n    variableCssSource: 'main:build/css/variables.css',\n    notes: sourceItem.sourceComparison?.reasons || [],\n    preview: {\n      exact: generated?.preview?.exact === true,\n      enforced: generated?.preview?.enforced === true,\n      warning: generated?.preview?.warning || null,\n    },\n  };\n\n  validComponents.push(componentName);\n}\n\nconst missingComponents = expectedComponents.filter((name) => !validComponents.includes(name));\n\nif (invalidComponents.length || missingComponents.length) {\n  throw new Error(\n    `Validation bloquante: missing=${JSON.stringify(missingComponents)} invalid=${JSON.stringify(invalidComponents)}`,\n  );\n}\n\nif (!validComponents.length) throw new Error('Aucun composant valide genere. Aucun push GitHub.');\n\nconst branchName = `ai/tokens-update-${formatBranchTimestamp()}`;\nconst previewWarnings = validComponents\n  .map((componentName) => ({ componentName, warning: previousDocs.component[componentName]?._meta?.preview?.warning || null }))\n  .filter((entry) => entry.warning);\n\nreturn [\n  {\n    json: {\n      mode: 'production',\n      message: previewWarnings.length\n        ? 'Validation MCP OK. Des apercus Figma sont a verifier dans Storybook avant la PR.'\n        : 'Validation MCP OK. Branche GitHub prete pour review Storybook.',\n      updatedComponents: validComponents.length,\n      validComponents,\n      invalidComponents,\n      previewWarnings,\n      content: JSON.stringify(previousDocs, null, 2),\n      contentBase64: Buffer.from(JSON.stringify(previousDocs, null, 2), 'utf-8').toString('base64'),\n      owner: 'tjovy',\n      repo: 'ds-documentation-thiga',\n      filePath: 'tokens-docs.json',\n      baseBranch: 'main',\n      baseSha: sourceItems[0]?.json?.sourceRef || null,\n      branchName,\n      commitMessage: `docs(tokens): refresh ${validComponents.join(', ')}`,\n    },\n  },\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1024,
+          240
+        ],
+        "id": "1fb04004-dc40-40f2-ba6c-71722843563e",
+        "name": "Finalize + Validate"
+      },
+      {
+        "parameters": {
+          "url": "https://api.github.com/repos/tjovy/ds-documentation-thiga/git/ref/heads/main",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/vnd.github+json"
+              },
+              {
+                "name": "X-GitHub-Api-Version",
+                "value": "2022-11-28"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -320,
+          48
+        ],
+        "id": "e0804644-39cf-4c6d-a9d1-511867e58ce2",
+        "name": "Get source main ref",
+        "credentials": {
+          "githubApi": {
+            "id": "0VPNkKqc7Pju3PKI",
+            "name": "git-demo-thiga"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ \"https://api.github.com/repos/\" + $(\"Finalize + Validate\").first().json.owner + \"/\" + $(\"Finalize + Validate\").first().json.repo + \"/git/refs\" }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/vnd.github+json"
+              },
+              {
+                "name": "X-GitHub-Api-Version",
+                "value": "2022-11-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { ref: \"refs/heads/\" + $(\"Finalize + Validate\").first().json.branchName, sha: $(\"Finalize + Validate\").first().json.baseSha } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1248,
+          240
+        ],
+        "id": "7b9ae31d-39fb-4467-ba69-c8b20b6066b3",
+        "name": "Create docs branch",
+        "credentials": {
+          "githubApi": {
+            "id": "0VPNkKqc7Pju3PKI",
+            "name": "git-demo-thiga"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "={{ \"https://api.github.com/repos/\" + $(\"Finalize + Validate\").first().json.owner + \"/\" + $(\"Finalize + Validate\").first().json.repo + \"/contents/\" + $(\"Finalize + Validate\").first().json.filePath }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/vnd.github+json"
+              },
+              {
+                "name": "X-GitHub-Api-Version",
+                "value": "2022-11-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { message: $(\"Finalize + Validate\").first().json.commitMessage, content: $(\"Finalize + Validate\").first().json.contentBase64, branch: $(\"Finalize + Validate\").first().json.branchName, sha: $(\"Get docs file metadata\").first().json.sha } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1696,
+          240
+        ],
+        "id": "c149519c-49e1-4bb6-b13e-3cc0f0491950",
+        "name": "Push tokens-docs.json",
+        "credentials": {
+          "githubApi": {
+            "id": "0VPNkKqc7Pju3PKI",
+            "name": "git-demo-thiga"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "={{ \"https://api.github.com/repos/\" + $(\"Finalize + Validate\").first().json.owner + \"/\" + $(\"Finalize + Validate\").first().json.repo + \"/contents/\" + $(\"Finalize + Validate\").first().json.filePath + \"?ref=\" + $(\"Finalize + Validate\").first().json.branchName }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/vnd.github+json"
+              },
+              {
+                "name": "X-GitHub-Api-Version",
+                "value": "2022-11-28"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1472,
+          240
+        ],
+        "id": "f1c2c62e-49fc-4289-8e21-db8d913f72a6",
+        "name": "Get docs file metadata",
+        "credentials": {
+          "githubApi": {
+            "id": "0VPNkKqc7Pju3PKI",
+            "name": "git-demo-thiga"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When clicking 'Execute workflow'": {
+        "main": [
+          [
+            {
+              "node": "Get source main ref",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get tokens-docs.json": {
+        "main": [
+          [
+            {
+              "node": "Get tokens.json",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get tokens.json": {
+        "main": [
+          [
+            {
+              "node": "Filtrer les composants incomplets",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filtrer les composants incomplets": {
+        "main": [
+          [
+            {
+              "node": "Get component generation context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get component generation context": {
+        "main": [
+          [
+            {
+              "node": "Process One at a Time",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process One at a Time": {
+        "main": [
+          [
+            {
+              "node": "Finalize + Validate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "OpenAI Low Cost — Generate Markdown",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Finalize + Validate": {
+        "main": [
+          [
+            {
+              "node": "Create docs branch",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create docs branch": {
+        "main": [
+          [
+            {
+              "node": "Get docs file metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get docs file metadata": {
+        "main": [
+          [
+            {
+              "node": "Push tokens-docs.json",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get source main ref": {
+        "main": [
+          [
+            {
+              "node": "Get tokens-docs.json",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Low Cost — Generate Markdown": {
+        "main": [
+          [
+            {
+              "node": "Process One at a Time",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "callerPolicy": "workflowsFromSameOwner",
+      "availableInMCP": false,
+      "timeSavedMode": "fixed"
+    },
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "pinData": {},
+    "versionId": "208822af-5e3a-4d87-af28-e925d3453fa4",
+    "activeVersionId": null,
+    "versionCounter": 19,
+    "triggerCount": 0,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-07-18T09:40:34.350Z",
+        "createdAt": "2026-07-18T09:40:34.350Z",
+        "role": "workflow:owner",
+        "workflowId": "5iHwlZOmTAxQDkec",
+        "projectId": "6UjVIo9mXU12vGvK",
+        "project": {
+          "updatedAt": "2026-02-11T13:01:37.405Z",
+          "createdAt": "2026-02-11T12:58:06.202Z",
+          "id": "6UjVIo9mXU12vGvK",
+          "name": "admin admin <admin@local.test>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "355301fa-a2a0-46ed-8a00-d6690546b819"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]
