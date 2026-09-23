@@ -1,0 +1,31 @@
+name: Validate generated documentation
+
+on:
+  push:
+    branches: ['ai/**']
+  pull_request:
+    paths:
+      - 'tokens-docs.json'
+      - 'tokens.json'
+      - 'tools/ds-component-mcp/**'
+      - 'src/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix tools/ds-component-mcp ci
+      - run: npm run test:mcp
+      - run: npm run build-css
+      - run: npm run validate-css-contract
+      - run: REQUIRE_SSOT_V4=1 npm run validate-docs
+      - run: npm run build-storybook
