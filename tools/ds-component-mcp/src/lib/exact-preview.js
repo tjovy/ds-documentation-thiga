@@ -70,6 +70,11 @@ function buttonEntries(context) {
 function buildButtonPreview(context) {
   const blueprint = context.figma.blueprint;
   const entries = buttonEntries(context);
+  const defaultFontFamily = cssVarForValue(
+    context,
+    entries.find(({ spec }) => spec.label?.fontFamily)?.spec.label.fontFamily,
+    ['core.04Typography.family.brand'],
+  );
   const shellBackground = cssVarForValue(context, blueprint.shell.background, ['semantic.color.bg.surface']);
   const shellBorder = blueprint.shell.border
     ? cssVarForValue(context, blueprint.shell.border, ['semantic.color.border.default'])
@@ -95,13 +100,12 @@ function buildButtonPreview(context) {
     '  justify-content: center;',
     '  margin: 0;',
     '  border-style: solid;',
-    '  font-family: var(--core-font-family-sans);',
+    `  font-family: ${defaultFontFamily};`,
     '  cursor: pointer;',
     '  outline: none;',
     '  white-space: nowrap;',
     '}',
     '',
-    '.thiga-button:focus-visible { box-shadow: 0 0 0 2px var(--semantic-color-focus-ring); }',
     '.thiga-button[disabled] { cursor: not-allowed; }',
     '.thiga-button__icon {',
     '  display: inline-flex;',
@@ -143,7 +147,7 @@ function buildButtonPreview(context) {
       '}',
       `.thiga-button--${variant}.thiga-button--${state}.thiga-button--${size} .thiga-button__label {`,
       `  color: ${labelColor};`,
-      `  font-family: ${spec.label?.fontFamily ? cssVarForValue(context, spec.label.fontFamily, ['core.font.family.sans']) : 'var(--core-font-family-sans)'};`,
+      `  font-family: ${spec.label?.fontFamily ? cssVarForValue(context, spec.label.fontFamily, ['core.04Typography.family.brand']) : defaultFontFamily};`,
       `  font-size: ${px(spec.label?.fontSize)};`,
       `  font-weight: ${spec.label?.fontWeight || 500};`,
       `  line-height: ${px(spec.label?.lineHeight)};`,
@@ -158,7 +162,7 @@ function buildButtonPreview(context) {
         `  width: ${px(icon.width, '16px')};`,
         `  height: ${px(icon.height, '16px')};`,
         `  color: ${iconColor};`,
-        `  font-family: ${icon.fontFamily ? cssVarForValue(context, icon.fontFamily, ['core.font.family.sans']) : 'var(--core-font-family-sans)'};`,
+        `  font-family: ${icon.fontFamily ? cssVarForValue(context, icon.fontFamily, ['core.04Typography.family.brand']) : defaultFontFamily};`,
         `  font-size: ${px(icon.fontSize, '14px')};`,
         `  font-weight: ${icon.fontWeight || 700};`,
         `  line-height: ${px(icon.lineHeight, '17px')};`,
