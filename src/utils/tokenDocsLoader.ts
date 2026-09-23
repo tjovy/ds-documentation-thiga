@@ -96,11 +96,11 @@ export const loadBranchDiff = async (branch: string, sourceRef?: string): Promis
   const flattenDocs = (obj: any, path: string = ''): Record<string, string> => {
     const res: Record<string, string> = {};
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return res;
-    
+
     if (obj.description && typeof obj.description === 'string') {
       res[path] = obj.description;
     }
-    
+
     for (const key in obj) {
       if (key !== 'description' && key !== '_meta') {
         const newPath = path ? `${path}.${key}` : key;
@@ -116,7 +116,7 @@ export const loadBranchDiff = async (branch: string, sourceRef?: string): Promis
     const entry = path.split('.').reduce((current, key) => current?.[key], obj);
     return entry && typeof entry === 'object' && !Array.isArray(entry) ? entry : null;
   };
-  
+
   const diffs: DiffItem[] = [];
   for (const key in flatBranch) {
     if (flatBranch[key] !== flatMain[key]) {
@@ -139,8 +139,8 @@ export const loadBranchDiff = async (branch: string, sourceRef?: string): Promis
 };
 
 export const saveTokenDocs = async (
-  newDocs: Record<string, any>, 
-  branch: string, 
+  newDocs: Record<string, any>,
+  branch: string,
   message: string
 ): Promise<SaveResult> => {
   try {
