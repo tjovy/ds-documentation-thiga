@@ -15,6 +15,9 @@ const outputPaths = [
 
 const ignoredKeys = new Set(['$metadata', '$themes', 'tokenSetOrder']);
 const maxAliasDepth = 16;
+const fontStylesheets = new Map([
+  ['DM Sans', 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@14,400..800&display=swap'],
+]);
 
 function readTokenValue(node) {
   if (!node || typeof node !== 'object' || Array.isArray(node)) return undefined;
@@ -163,8 +166,13 @@ function buildCss(tokens) {
   }
 
   const declarations = collected.map((token) => `  ${token.name}: ${token.value};`);
+  const brandFamily = collected.find((token) => token.name === '--core-04-typography-family-brand')?.value;
+  const fontStylesheet = fontStylesheets.get(brandFamily);
+  if (!fontStylesheet) {
+    throw new Error(`Aucune feuille de police enregistrée pour la famille Figma ${brandFamily || '(absente)'}`);
+  }
 
-  return `/* Generated from tokens.json. Do not edit manually. */\n:root {\n${declarations.join('\n')}\n}\n`;
+  return `@import url('${fontStylesheet}');\n/* Generated from tokens.json. Do not edit manually. */\n:root {\n${declarations.join('\n')}\n}\n`;
 }
 
 const rawTokens = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
