@@ -24,6 +24,24 @@ export const normalizeLiveCode = (children) => {
   return injectUnifiedPreviewFrame(codeString);
 };
 
+export const extractLiveCode = (content) => {
+  const markdown = xmlTagsToMarkdown(String(content || ''));
+  const match = markdown.match(/```(?:jsx|tsx|js)\s*\r?\n([\s\S]*?)\r?\n```/i);
+  return match ? normalizeLiveCode(match[1]) : null;
+};
+
+export const LiveMarkdownPreview = ({ content }) => {
+  const code = extractLiveCode(content);
+  if (!code) return <p>Aperçu indisponible : aucun JSX validé dans tokens-docs.json.</p>;
+
+  return (
+    <LiveProvider code={code} scope={liveEditorScope} noInline={true}>
+      <LivePreview />
+      <LiveError className="zh-live-error" />
+    </LiveProvider>
+  );
+};
+
 const LiveCodeBlock = ({ sourceCode }) => {
   const normalizedCode = normalizeLiveCode(sourceCode);
   const [draftCode, setDraftCode] = useState(normalizedCode);

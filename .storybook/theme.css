@@ -80,6 +80,16 @@
 .zh-a11y p { margin: 0 0 12px; }
 .zh-a11y ul { margin: 0; padding-left: 22px; }
 .zh-a11y li { margin: 4px 0; }
+.zh-icon-library { margin-top: 28px; }
+.zh-icon-library .ds-subtitle { margin: 8px 0 20px; }
+.zh-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.zh-icon-card { min-width: 0; padding: 20px; border: 1px solid #E5E7EB; border-radius: 12px; background: #FFFFFF; }
+.zh-icon-preview { display: grid; place-items: center; min-height: 92px; margin-bottom: 14px; border-radius: 8px; background: #F9FAFB; }
+.zh-icon-card h3 { margin: 0 0 4px; font-size: 16px; }
+.zh-icon-card > code { font-size: 12px; color: #6B7280; }
+.zh-icon-details { margin-top: 16px; border-top: 1px solid #E5E7EB; padding-top: 12px; }
+.zh-icon-details summary { cursor: pointer; font-weight: 600; }
+.zh-icon-details .zh-live-preview { min-width: 0; }
 /* ── AI Summary ── */
 .ds-ai-card { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 24px; margin-bottom: 16px; transition: border-color 0.15s ease; }
 .ds-ai-card:hover { border-color: #D1D5DB; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }

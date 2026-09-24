@@ -810,8 +810,20 @@ function generateTokenDocsComponentStories() {
     .map(([name]) => name)
     .sort((a, b) => a.localeCompare(b));
 
-  const usedExports = new Set();
-  const componentExports = documentedComponentNames.map((name, index) => {
+  const utilityIconNames = documentedComponentNames.filter((name) => {
+    const figmaName = tokens.component?.[name]?.$figma?.name
+      || tokenDocs.component?.[name]?._meta?.figmaMatchedKey
+      || '';
+    return /^Icon\//i.test(figmaName);
+  });
+  const utilityIconLabels = Object.fromEntries(utilityIconNames.map((name) => [
+    name,
+    String(tokens.component?.[name]?.$figma?.name || tokenDocs.component?.[name]?._meta?.figmaMatchedKey).replace(/^Icon\//i, ''),
+  ]));
+  const componentNames = documentedComponentNames.filter((name) => !utilityIconNames.includes(name));
+
+  const usedExports = new Set(['Overview', 'UtilityIcons']);
+  const componentExports = componentNames.map((name, index) => {
     const baseName = name
       .split(/[^a-zA-Z0-9]+/)
       .filter(Boolean)
@@ -824,7 +836,7 @@ function generateTokenDocsComponentStories() {
   });
 
   const file = `import React from 'react';
-import { LiveMarkdownViewer } from '../utils/LiveMarkdownViewer';
+import { LiveMarkdownViewer, LiveMarkdownPreview } from '../utils/LiveMarkdownViewer';
 import DOCS from '../../tokens-docs.json';
 import './variables.css';
 import './ds-theme.css';
@@ -838,6 +850,11 @@ const componentEntries = Object.entries(DOCS.component || {})
     meta: entry?._meta || null,
   }))
   .filter((entry) => entry.description.length > 0);
+
+const utilityIconNames = ${js(utilityIconNames)};
+const utilityIconLabels = ${js(utilityIconLabels)};
+const componentEntriesWithoutIcons = componentEntries.filter((entry) => !utilityIconNames.includes(entry.name));
+const utilityIconEntries = componentEntries.filter((entry) => utilityIconNames.includes(entry.name));
 
 const formatDate = (value) => {
   if (!value) return 'non genere';
@@ -905,30 +922,59 @@ const ComponentPage = ({ componentName }) => {
   return <div className="ds-page"><ComponentDoc entry={entry} /></div>;
 };
 
+const UtilityIconsSection = () => (
+  <section className="zh-icon-library" aria-labelledby="utility-icons-heading">
+    <div className="ds-header-row">
+      <h2 id="utility-icons-heading" className="ds-title">Utility Icons</h2>
+      <span className="ds-count">{utilityIconEntries.length} icône(s)</span>
+    </div>
+    <p className="ds-subtitle">Une seule librairie de revue. Chaque aperçu utilise le JSX de tokens-docs.json et les variables CSS de main.</p>
+    <div className="zh-icon-grid">
+      {utilityIconEntries.map((entry) => (
+        <article className="zh-icon-card" key={entry.name}>
+          <div className="zh-icon-preview"><LiveMarkdownPreview content={entry.description} /></div>
+          <h3>{utilityIconLabels[entry.name] || entry.name}</h3>
+          <code>{entry.name}</code>
+          <details className="zh-icon-details">
+            <summary>Spécifications et code</summary>
+            <AccessibilityPanel meta={entry.meta} name={entry.name} />
+            <LiveMarkdownViewer content={entry.description} />
+          </details>
+        </article>
+      ))}
+    </div>
+  </section>
+);
+
+const UtilityIconsPage = () => (
+  <div className="ds-page"><UtilityIconsSection /></div>
+);
+
 export const Overview = () => (
   <div className="ds-page">
     <header className="ds-header">
       <div className="ds-header-row">
         <h1 className="ds-title">Components</h1>
-        <span className="ds-count">{componentEntries.length} composant(s)</span>
+        <span className="ds-count">{componentEntriesWithoutIcons.length} composant(s) · {utilityIconEntries.length} icône(s)</span>
       </div>
       <p className="ds-subtitle">
         Rendu strictement alimente par tokens-docs.json. Les couleurs, espacements, rayons et typographies utilises par le JSX viennent des variables CSS importees depuis variables.css.
       </p>
     </header>
     <div style={{ display: 'grid', gap: 20 }}>
-      {componentEntries.length > 0
-        ? componentEntries.map((entry) => <ComponentDoc key={entry.name} entry={entry} />)
-        : <EmptyState />}
+      {componentEntriesWithoutIcons.map((entry) => <ComponentDoc key={entry.name} entry={entry} />)}
+      {utilityIconEntries.length > 0 && <UtilityIconsSection />}
+      {componentEntries.length === 0 && <EmptyState />}
     </div>
   </div>
 );
 
 ${componentExports.join('\n\n')}
+${utilityIconNames.length ? `export const UtilityIcons = { render: () => <UtilityIconsPage /> };` : ''}
 `;
 
   writeFile('Components.stories.jsx', file);
-  return `Components.stories.jsx (${documentedComponentNames.length} composant(s) depuis tokens-docs.json)`;
+  return `Components.stories.jsx (${componentNames.length} composant(s), ${utilityIconNames.length} icône(s) depuis tokens-docs.json)`;
 }
 
 
