@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 'ssot-v7';
+const WORKFLOW_VERSION = 'ssot-v8';
 const RENDERER_VERSION = 'figma-tree-v5';
 const MAX_COMPONENTS_PER_RUN = (() => {
   const raw = String($env.MAX_COMPONENTS_PER_RUN || '').trim();
@@ -282,6 +282,7 @@ async function reviewedSourceHashes() {
       .slice(0, REVIEW_BRANCH_SCAN_LIMIT);
     const sourceHashes = new Set();
     const figmaHashes = new Set();
+    const reviewEntries = new Map();
 
     for (const branch of branches) {
       try {
@@ -295,8 +296,13 @@ async function reviewedSourceHashes() {
         if (!encoded) continue;
         const branchDocs = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
         for (const [componentName, entry] of Object.entries(branchDocs?.component || {})) {
+          if (entry?._meta?.workflowVersion !== WORKFLOW_VERSION || entry?._meta?.rendererVersion !== RENDERER_VERSION) continue;
           const sourceHash = entry?._meta?.sourceHash;
-          if (sourceHash) sourceHashes.add(`${componentName}:${sourceHash}`);
+          if (sourceHash) {
+            const key = `${componentName}:${sourceHash}`;
+            if (!reviewEntries.has(key)) reviewEntries.set(key, entry);
+            sourceHashes.add(key);
+          }
           const figmaHash = entry?._meta?.figmaHash;
           if (
             figmaHash
@@ -311,10 +317,10 @@ async function reviewedSourceHashes() {
       }
     }
 
-    return { sourceHashes, figmaHashes };
+    return { sourceHashes, figmaHashes, reviewEntries };
   } catch (error) {
     console.warn(`Impossible de lire les branches de revue: ${error.message}`);
-    return { sourceHashes: new Set(), figmaHashes: new Set() };
+    return { sourceHashes: new Set(), figmaHashes: new Set(), reviewEntries: new Map() };
   }
 }
 
@@ -331,12 +337,13 @@ try {
   } catch (error) {
     docs = {};
   }
+  docs.component ||= {};
 
   const items = [];
   const blockedComponents = [];
   const completedReviews = Number.isFinite(MAX_COMPONENTS_PER_RUN)
     ? await reviewedSourceHashes.call(this)
-    : { sourceHashes: new Set(), figmaHashes: new Set() };
+    : { sourceHashes: new Set(), figmaHashes: new Set(), reviewEntries: new Map() };
   const components = tokens.component || {};
   await callMcpTool.call(this, 'refresh_figma_context', {});
   const inventory = await callMcpTool.call(this, 'list_components', { tokens });
@@ -379,6 +386,8 @@ try {
       figmaHash,
       accessibilitySpec: context.component?.accessibilitySpec || null,
     });
+    const matchingReview = completedReviews.reviewEntries.get(`${componentName}:${currentSourceHash}`);
+    if (matchingReview) docs.component[componentName] = matchingReview;
 
     const reasons = [];
     if (isLegacyDoc(existingMarkdown)) reasons.push('legacy_doc');

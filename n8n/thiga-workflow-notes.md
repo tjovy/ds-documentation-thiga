@@ -86,4 +86,4 @@ Variables d'environnement n8n nécessaires :
 - `OPENAI_MAX_OUTPUT_TOKENS` : optionnel, défaut `2500` ;
 - `OPENAI_MAX_REPAIR_TOKENS` : optionnel, défaut `1200`, utilisé une seule fois après un échec de validation.
 
-Le workflow n'envoie ni le Markdown historique ni le design Figma complet au modèle. L'empreinte `ssot-v7` inclut le contrat d’accessibilité et évite tout appel OpenAI lorsque les sources n'ont pas changé.
+Le workflow n'envoie ni le Markdown historique ni le design Figma complet au modèle. L'empreinte `ssot-v8` inclut le contrat d’accessibilité et évite tout appel OpenAI lorsque les sources n'ont pas changé. Avec une limite par lot, les entrées de même empreinte déjà produites sur les branches `ai/*` récentes sont reprises dans le prochain `tokens-docs.json` : la dernière branche de revue cumule ainsi les composants des lots précédents.

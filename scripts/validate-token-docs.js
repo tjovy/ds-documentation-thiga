@@ -14,7 +14,7 @@ const figmaCache = loadFigmaCache(path.join(root, 'n8n', 'cache', 'figma-design-
 const failures = [];
 let validated = 0;
 const requireCurrentDocs = process.env.REQUIRE_SSOT_V4 === '1';
-const currentWorkflowVersion = 'ssot-v7';
+const currentWorkflowVersion = 'ssot-v8';
 
 if (requireCurrentDocs) {
   const entries = Object.entries(docs.component || {});

@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 'ssot-v7';
+const WORKFLOW_VERSION = 'ssot-v8';
 const RENDERER_VERSION = 'figma-tree-v5';
 const MCP_ENDPOINT = 'http://127.0.0.1:3101/mcp';
 // The done output of Loop Over Items contains the generated result of every iteration.
