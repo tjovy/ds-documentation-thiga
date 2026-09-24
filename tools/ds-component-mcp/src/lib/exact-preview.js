@@ -70,6 +70,8 @@ function buttonEntries(context) {
 function buildButtonPreview(context) {
   const blueprint = context.figma.blueprint;
   const entries = buttonEntries(context);
+  const focusToken = tokenEntries(context).find((entry) => entry.tokenPath === 'core.02SemanticColor.border.focus');
+  if (!focusToken?.cssVar) throw new Error('Token Figma de focus du bouton absent du contrat CSS');
   const defaultFontFamily = cssVarForValue(
     context,
     entries.find(({ spec }) => spec.label?.fontFamily)?.spec.label.fontFamily,
@@ -107,6 +109,7 @@ function buildButtonPreview(context) {
     '}',
     '',
     '.thiga-button[disabled] { cursor: not-allowed; }',
+    `.thiga-button:focus-visible { outline: 2px solid var(${focusToken.cssVar}); outline-offset: 2px; }`,
     '.thiga-button__icon {',
     '  display: inline-flex;',
     '  align-items: center;',

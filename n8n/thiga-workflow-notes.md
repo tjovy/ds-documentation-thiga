@@ -36,6 +36,10 @@ Exemple Figma ou `$dev` :
   "allowedProps": ["children", "aria-label"],
   "slots": ["item"],
   "accessibility": ["Ajouter aria-label si aucun titre visible ne nomme la navigation."],
+  "accessibilitySpec": {
+    "requirements": [{"id": "accessible-name", "wcag": "4.1.2", "text": "Nommer la navigation selon sa destination."}],
+    "manualChecks": ["Tester l'annonce du nom et la navigation au clavier."]
+  },
   "usageRules": {
     "do": ["Utiliser pour une navigation principale ou secondaire."],
     "dont": ["Ne pas utiliser pour une simple liste visuelle sans navigation."]
@@ -52,6 +56,12 @@ Le MCP peut ajouter des tokens references sous `core`, `semantic`, `typography` 
 Pour un composant auto-detecte, le hash part de `component.<nom>`, du blueprint Figma stable et des chemins references par le MCP s'il y en a. Aucun token de fallback n'est ajoute automatiquement.
 
 Le champ `$metadata.figmaFileKey` permet de relier les artefacts au fichier Figma source.
+
+## Contrat accessibilité et revue
+
+Les exigences initiales de chaque composant connu sont dans `tools/ds-component-mcp/registry/accessibility-contracts.json`. Un contrat développeur `accessibilitySpec` explicite peut compléter ou remplacer ce contrat lorsqu’une décision de sémantique est prise. Le MCP transmet sa provenance, n8n l’ajoute au hash de dérive et sauvegarde `_meta.accessibility` (`spec`, `audit`, `reviewStatus`) dans `tokens-docs.json`. Storybook rend visibles les contrôles statiques, les écarts et les tests manuels restants.
+
+Le rendu déterministe issu de Figma garantit la fidélité visuelle, pas la conformité WCAG. Ne pas transformer un aperçu `div` de Data Table en tableau accessible par simple ajout de `role=table`; l’implémentation de production doit employer une structure HTML adaptée. Ne pas utiliser `aria-selected` sur `role=listitem`. Un écart statique ou une vérification clavier/lecteur d’écran à faire maintient la revue ouverte sans bloquer la génération des autres composants.
 
 ## Generation documentation + code
 
@@ -76,4 +86,4 @@ Variables d'environnement n8n nécessaires :
 - `OPENAI_MAX_OUTPUT_TOKENS` : optionnel, défaut `2500` ;
 - `OPENAI_MAX_REPAIR_TOKENS` : optionnel, défaut `1200`, utilisé une seule fois après un échec de validation.
 
-Le workflow n'envoie ni le Markdown historique ni le design Figma complet au modèle. L'empreinte `ssot-v6` évite tout appel OpenAI lorsque les tokens et le blueprint Figma n'ont pas changé.
+Le workflow n'envoie ni le Markdown historique ni le design Figma complet au modèle. L'empreinte `ssot-v7` inclut le contrat d’accessibilité et évite tout appel OpenAI lorsque les sources n'ont pas changé.

@@ -74,6 +74,12 @@
 .ds-preview-box { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 32px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .ds-preview-box-dark { background: #111827; }
 .ds-preview-box-grid { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.zh-a11y { margin: 20px 0 28px; padding: 20px 24px; border: 1px solid #B45309; border-radius: 10px; background: #FFFBEB; color: #292524; line-height: 1.55; }
+.zh-a11y h3 { margin: 0 0 8px; font-size: 17px; }
+.zh-a11y h4 { margin: 16px 0 6px; font-size: 14px; }
+.zh-a11y p { margin: 0 0 12px; }
+.zh-a11y ul { margin: 0; padding-left: 22px; }
+.zh-a11y li { margin: 4px 0; }
 /* ── AI Summary ── */
 .ds-ai-card { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 24px; margin-bottom: 16px; transition: border-color 0.15s ease; }
 .ds-ai-card:hover { border-color: #D1D5DB; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }

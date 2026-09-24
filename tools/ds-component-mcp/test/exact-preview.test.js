@@ -38,7 +38,7 @@ function exact(name) {
 }
 
 test('loads the 24 Thiga Button combinations from Figma', () => {
-  const { context, output } = exact('button');
+  const { context, output, validation } = exact('button');
   assert.deepEqual(context.component.variants, ['primary', 'secondary']);
   assert.deepEqual(context.component.sizes, ['sm', 'md', 'lg']);
   assert.deepEqual(context.component.states, ['default', 'hover', 'pressed', 'disabled']);
@@ -50,6 +50,25 @@ test('loads the 24 Thiga Button combinations from Figma', () => {
   assert.equal(output.warning, null);
   assert.match(output.code, /"label": "Nous contacter"/);
   assert.match(output.code, />\{item.label\}<\/Button>/);
+  assert.equal(context.component.accessibilitySpec.source, 'registry:accessibility-contracts.json');
+  assert.ok(context.contract.allowedCssVars.includes('--core-02-semantic-color-border-focus'));
+  assert.match(output.code, /\.thiga-button:focus-visible\s*\{\s*outline: 2px solid var\(--core-02-semantic-color-border-focus\)/);
+  assert.ok(validation.checks.accessibility.staticChecks.every((check) => check.status === 'pass'));
+  assert.equal(validation.checks.accessibility.reviewRequired, true);
+});
+
+test('flags Figma previews whose production semantics need an explicit accessibility decision', () => {
+  const table = exact('dataTable');
+  assert.equal(table.context.component.semanticHtmlKnown, false);
+  assert.equal(table.context.component.role, null);
+  assert.equal(table.validation.checks.accessibility.staticChecks.find((check) => check.id === 'table-structure')?.status, 'gap');
+  assert.equal(table.validation.checks.accessibility.reviewRequired, true);
+
+  const list = exact('listItem');
+  assert.equal(list.context.component.semanticHtmlKnown, false);
+  assert.equal(list.context.component.role, null);
+  assert.ok(list.context.component.accessibilitySpec.requirements.some((item) => item.id === 'selection-semantics'));
+  assert.ok(list.validation.checks.accessibility.openQuestions.length > 0);
 });
 
 test('loads the six Thiga Card combinations without legacy Tone/Media axes', () => {

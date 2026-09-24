@@ -52,6 +52,14 @@ Le workflow n8n `ds-documentation-thiga` applique ce principe :
 6. MCP remplace l'aperçu par le rendu déterministe issu du blueprint Figma quand il peut le faire exactement ; sinon, il conserve le code et ajoute une alerte de revue Storybook
 7. n8n pousse seulement `tokens-docs.json` dans une branche review
 
+## Spécifications d’accessibilité
+
+La cible de revue est WCAG 2.2 AA ; une prévisualisation Storybook ou un audit statique ne constitue pas une attestation de conformité. Les exigences par composant sont centralisées dans `tools/ds-component-mcp/registry/accessibility-contracts.json`. Le MCP les joint au contexte de génération avec leur provenance ; n8n les inclut dans l’empreinte de changement puis enregistre dans `tokens-docs.json` le contrat, l’audit statique et le statut de revue. Storybook affiche ces trois éléments à côté du composant.
+
+Figma reste la source des dimensions, variantes et styles ; il ne suffit pas à établir le nom accessible, le comportement clavier, la sémantique HTML ou le résultat au lecteur d’écran. Pour un nouveau composant, ajouter un contrat `accessibilitySpec` via `component.<nom>.$dev` dans les tokens ou dans la description Figma sous `@thiga-dev`, puis faire valider son usage réel par l’équipe. Tant que ce contrat est absent, Storybook signale une revue requise. Le bouton utilise un élément natif et un focus visible ; l’aperçu de Data Table reste visuel et ne remplace pas un `<table>` avec en-têtes et légende ; List Item attend le choix explicite du pattern de sélection.
+
+Avant livraison, vérifier manuellement les parcours clavier, le focus, les noms et états annoncés, le contraste, le zoom et les technologies d’assistance sur l’implémentation de production. Références : [WCAG 2.2](https://www.w3.org/TR/WCAG22/), [noms accessibles](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/) et [tableaux](https://www.w3.org/WAI/ARIA/apg/patterns/table/).
+
 ## Sources de chaque vue Storybook
 
 - Les tokens et le CSS du Design System sont lus depuis le même commit de `main`.

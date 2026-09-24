@@ -860,6 +860,28 @@ const EmptyState = () => (
   </div>
 );
 
+const AccessibilityPanel = ({ meta, name }) => {
+  const accessibility = meta?.accessibility;
+  const spec = accessibility?.spec;
+  const audit = accessibility?.audit;
+  return (
+    <section className="zh-a11y" aria-labelledby={'a11y-heading-' + name}>
+      <h3 id={'a11y-heading-' + name}>Accessibilité — revue requise</h3>
+      {!spec ? (
+        <p>Contrat d’accessibilité non encore généré pour cette revue. Ne pas déduire une conformité du seul aperçu visuel.</p>
+      ) : (
+        <>
+          <p>{spec.target} · Source : {spec.source}. Les contrôles statiques ne remplacent pas les tests clavier et lecteur d’écran.</p>
+          {spec.requirements?.length > 0 && <ul>{spec.requirements.map((item) => <li key={item.id}><strong>{item.id}</strong> {item.wcag ? '(WCAG ' + item.wcag + ')' : ''} — {item.text}</li>)}</ul>}
+          {audit?.staticChecks?.length > 0 && <div><h4>Contrôles du code de preview</h4><ul>{audit.staticChecks.map((item) => <li key={item.id}>{item.status === 'pass' ? 'Présent' : 'Écart à traiter'} : {item.detail}</li>)}</ul></div>}
+          {spec.manualChecks?.length > 0 && <div><h4>À vérifier manuellement</h4><ul>{spec.manualChecks.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {audit?.openQuestions?.length > 0 && <div><h4>Décisions ouvertes</h4><ul>{audit.openQuestions.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+        </>
+      )}
+    </section>
+  );
+};
+
 const ComponentDoc = ({ entry }) => (
   <article className="zh-component-documentation">
     <header className="zh-component-header">
@@ -872,6 +894,7 @@ const ComponentDoc = ({ entry }) => (
         {entry.meta?.generatedAt ? ' Genere le ' + formatDate(entry.meta.generatedAt) + '.' : ''}
       </p>
     </header>
+    <AccessibilityPanel meta={entry.meta} name={entry.name} />
     <LiveMarkdownViewer content={entry.description} />
   </article>
 );

@@ -1,5 +1,6 @@
 import { transform } from 'sucrase';
 import { buildExactPreviewCode, buildGenericPreview } from './exact-preview.js';
+import { auditAccessibilityPreview } from './accessibility.js';
 
 const EXPECTED_SECTIONS = [
   'description',
@@ -181,6 +182,7 @@ export function validateComponentMarkdown(markdown, context, options = {}) {
     /<(?:script|iframe)\b/i,
   ].filter((pattern) => pattern.test(code)).map((pattern) => pattern.source);
   const visualContract = validateVisualContract(code, context.component, context);
+  const accessibility = auditAccessibilityPreview(code, context);
   let canonicalPreviews = [];
   try {
     canonicalPreviews = [buildExactPreviewCode(context), buildGenericPreview(context)]
@@ -252,6 +254,7 @@ export function validateComponentMarkdown(markdown, context, options = {}) {
       exactPreviewMatch,
       allowVisualApproximation,
       visualReviewRequired: allowVisualApproximation && (!visualContractOk || !exactPreviewMatch),
+      accessibility,
     },
   };
 }

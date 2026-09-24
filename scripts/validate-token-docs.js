@@ -14,7 +14,7 @@ const figmaCache = loadFigmaCache(path.join(root, 'n8n', 'cache', 'figma-design-
 const failures = [];
 let validated = 0;
 const requireCurrentDocs = process.env.REQUIRE_SSOT_V4 === '1';
-const currentWorkflowVersion = 'ssot-v6';
+const currentWorkflowVersion = 'ssot-v7';
 
 if (requireCurrentDocs) {
   const entries = Object.entries(docs.component || {});
@@ -38,6 +38,15 @@ for (const [name, entry] of Object.entries(docs.component || {})) {
   });
   validated += 1;
   if (!result.valid) failures.push(`${name}: ${JSON.stringify(result.checks)}`);
+  if (entry?._meta?.accessibility?.spec?.source !== context.component.accessibilitySpec.source) {
+    failures.push(`${name}: provenance du contrat accessibilite absente ou obsolete`);
+  }
+  if (!entry?._meta?.accessibility?.audit?.staticChecks) {
+    failures.push(`${name}: audit statique accessibilite absent`);
+  }
+  if (entry?._meta?.accessibility?.reviewStatus !== 'review-required' && entry?._meta?.accessibility?.reviewStatus !== 'reviewed-in-code') {
+    failures.push(`${name}: statut de revue accessibilite absent`);
+  }
 }
 
 if (failures.length) throw new Error(`Documentation invalide:\n${failures.join('\n')}`);

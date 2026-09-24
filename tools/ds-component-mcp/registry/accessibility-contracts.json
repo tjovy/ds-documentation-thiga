@@ -1,0 +1,58 @@
+{
+  "target": "WCAG 2.2 AA — objectif de revue, pas attestation de conformité",
+  "components": {
+    "button": {
+      "requirements": [
+        { "id": "native-control", "wcag": "4.1.2", "text": "Utiliser un bouton HTML natif, pas un div cliquable." },
+        { "id": "accessible-name", "wcag": "4.1.2", "text": "Donner un nom accessible décrivant l’action, visible si possible." },
+        { "id": "keyboard", "wcag": "2.1.1", "text": "Activer avec Entrée et Espace et préserver l’ordre de tabulation." },
+        { "id": "disabled", "wcag": "4.1.2", "text": "Exposer l’état indisponible avec l’attribut disabled natif." },
+        { "id": "focus", "wcag": "2.4.7", "text": "Afficher un indicateur de focus clavier visible sur les états actifs." }
+      ],
+      "manualChecks": ["Vérifier le nom annoncé et l’activation Entrée/Espace au lecteur d’écran.", "Contrôler le contraste texte/fond et l’indicateur de focus sur chaque variante active."]
+    },
+    "card": {
+      "requirements": [
+        { "id": "structure", "wcag": "1.3.1", "text": "Regrouper le contenu lié avec une structure sémantique et un titre adapté à la hiérarchie de la page." },
+        { "id": "interaction", "wcag": "2.1.1", "text": "Ne pas rendre la carte entière interactive sans action et comportement clavier explicites." }
+      ],
+      "manualChecks": ["Vérifier la hiérarchie des titres dans la page de destination.", "Contrôler le contraste des textes et la lisibilité des états désactivés sans se fier uniquement à la couleur."]
+    },
+    "dataTable": {
+      "requirements": [
+        { "id": "table-structure", "wcag": "1.3.1", "text": "En production, utiliser un tableau HTML avec caption, en-têtes th et associations de colonnes/lignes ; un div role=table seul ne suffit pas." },
+        { "id": "control-names", "wcag": "4.1.2", "text": "Nommer la recherche, les cases à cocher, les actions de ligne et la pagination selon leur destination." },
+        { "id": "keyboard", "wcag": "2.1.1", "text": "Toutes les commandes du tableau doivent fonctionner au clavier avec focus visible." },
+        { "id": "status", "wcag": "1.4.1", "text": "Ne pas communiquer les statuts par la couleur seule." }
+      ],
+      "manualChecks": ["Faire annoncer caption, en-têtes et cellules par un lecteur d’écran.", "Tester recherche, sélection, actions et pagination au clavier, puis à 200 % de zoom."]
+    },
+    "listItem": {
+      "requirements": [
+        { "id": "pattern-decision", "wcag": "1.3.1", "text": "Décider explicitement si l’élément est une liste statique, un lien, un bouton ou une option sélectionnable avant de fixer son rôle." },
+        { "id": "selection-semantics", "wcag": "4.1.2", "text": "Ne pas placer aria-selected sur role=listitem ; pour une sélection interactive, choisir un rôle compatible et son conteneur." },
+        { "id": "keyboard", "wcag": "2.1.1", "text": "Définir la navigation clavier du pattern choisi et distinguer focus de sélection." }
+      ],
+      "manualChecks": ["Valider le pattern d’interaction avec l’équipe produit avant la production.", "Tester l’annonce de l’état sélectionné et le déplacement du focus au lecteur d’écran."]
+    },
+    "arrowRight": {
+      "requirements": [
+        { "id": "icon-purpose", "wcag": "1.1.1", "text": "Masquer l’icône décorative aux technologies d’assistance ; si elle porte du sens seule, lui donner un nom accessible." }
+      ],
+      "manualChecks": ["Vérifier qu’une action composée uniquement de cette icône est nommée par son bouton ou son lien parent."]
+    },
+    "check": {
+      "requirements": [
+        { "id": "icon-purpose", "wcag": "1.1.1", "text": "Masquer le pictogramme décoratif ; si la validation ou sélection n’est indiquée que par l’icône, exposer ce sens en texte accessible." }
+      ],
+      "manualChecks": ["Vérifier que l’état confirmé reste compréhensible sans couleur ni pictogramme."]
+    },
+    "more": {
+      "requirements": [
+        { "id": "icon-purpose", "wcag": "1.1.1", "text": "Masquer l’icône décorative et nommer le bouton parent par l’action attendue, pas simplement « Plus »." },
+        { "id": "menu-keyboard", "wcag": "2.1.1", "text": "Si un menu est ouvert, documenter et tester son comportement clavier et son état ouvert/fermé." }
+      ],
+      "manualChecks": ["Tester l’annonce du bouton et du menu d’actions dans son contexte réel."]
+    }
+  }
+}

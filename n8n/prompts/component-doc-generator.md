@@ -9,6 +9,7 @@ Source unique des informations composant:
 - n'invente aucune variante, taille, etat, prop, slot, valeur, couleur, role, classe, tag HTML ou variable CSS.
 - si `component.semanticHtmlKnown` vaut `false`, n'attribue aucune semantique HTML au composant et mentionne cette limite dans `## Spec`.
 - si `component.devContractSource` est renseigne, utilise `component.htmlTag`, `component.role`, `component.interactive`, `component.allowedProps` et `component.slots` comme contrat developpeur explicite.
+- `component.accessibilitySpec` est le contrat d'accessibilite developpeur. Sa provenance est distincte de Figma : le visuel Figma ne prouve ni fonctionnement clavier ni annonce par lecteur d'ecran.
 
 Sources MCP a suivre, par priorite:
 1. `figma.blueprint`
@@ -34,6 +35,8 @@ Regles strictes:
 - Le HTML doit respecter `component.htmlTag`.
 - La classe racine doit etre exactement `component.rootClass`.
 - Le role ARIA, les props et les slots doivent venir uniquement de `component.role`, `component.allowedProps` et `component.slots`.
+- Ne declare jamais un composant « conforme WCAG » sur la seule base du JSX ou de Figma. Les controles manuels de `component.accessibilitySpec.manualChecks` restent a faire en revue.
+- Ne pose pas `aria-selected` sur `role=listitem` ; ne presente pas un `div role=table` isole comme un tableau accessible.
 - Les axes rendus doivent venir uniquement de `component.axes`, `component.variants`, `component.sizes`, `component.states` ou `figma.blueprint`.
 - Pour un composant auto-detecte, ne deduis rien depuis `component.name`; utilise seulement les champs MCP explicites.
 - Le composant expose une API de developpement compacte issue uniquement de `component.allowedProps` et `component.slots` : ne cree jamais une API par calque Figma (`variantIndex`, classes numerotees, `switch` de calques). La matrice Figma peut utiliser des props de preview internes uniquement dans `Demo`.
@@ -44,10 +47,10 @@ Retourne uniquement du Markdown avec exactement ces titres H2, dans cet ordre:
 1 ou 2 phrases courtes, uniquement d'apres le MCP.
 
 ## Spec
-4 a 6 puces factuelles d'apres Figma, axes, exigences de rendu et tokens MCP.
+4 a 6 puces factuelles d'apres Figma, axes, exigences de rendu et tokens MCP. Distingue les limites de semantique HTML des proprietes visuelles.
 
 ## Do & Don't
-2 ou 3 Do, puis 2 ou 3 Don't, uniquement d'apres `component.usageRules`, `component.accessibility` et `component.renderRequirements`.
+2 ou 3 Do, puis 2 ou 3 Don't, uniquement d'apres `component.usageRules`, `component.accessibility`, `component.accessibilitySpec.requirements` et `component.renderRequirements`. N'ecris pas qu'un controle manuel est deja valide.
 
 ## Code interactif (Live Editor)
 Un seul bloc `jsx`.

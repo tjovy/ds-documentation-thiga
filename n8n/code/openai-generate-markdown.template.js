@@ -71,6 +71,7 @@ function compactContext(ctx = {}) {
       variants: ctx.component?.variants || [], sizes: ctx.component?.sizes || [], states: ctx.component?.states || [],
       previewMatrix: ctx.component?.previewMatrix, renderRequirements: ctx.component?.renderRequirements,
       usageRules: ctx.component?.usageRules, accessibility: ctx.component?.accessibility,
+      accessibilitySpec: ctx.component?.accessibilitySpec,
     },
     figma: { matchedKey: ctx.figma?.matchedKey, cachedAt: ctx.figma?.cachedAt, blueprint: compactBlueprint(ctx) },
     allowedCssVars,

@@ -2,7 +2,8 @@
   "name": "dataTable",
   "title": "Data Table",
   "htmlTag": "div",
-  "role": "table",
+  "role": null,
+  "semanticHtmlKnown": false,
   "requiresFigma": true,
   "interactive": false,
   "summary": "Tableau de données Thiga en densité Comfortable ou Compact.",
@@ -13,7 +14,7 @@
   "sizes": [],
   "states": [],
   "usageRules": {"do": ["Choisir la densité selon le volume de données."], "dont": ["Ne pas supprimer les en-têtes de colonnes."]},
-  "accessibility": ["La version de production doit exposer une structure de tableau accessible."],
+  "accessibility": ["La maquette Figma ne définit pas le balisage des lignes et cellules. La version de production doit utiliser un tableau HTML accessible ; ne pas considérer le div de preview comme conforme."],
   "previewMatrix": {"axes": ["density"]},
   "renderRequirements": {"mustInclude": ["Afficher les deux densités Figma."], "forbiddenPatterns": ["Aucune densité non déclarée."]},
   "requiredTokenPaths": []

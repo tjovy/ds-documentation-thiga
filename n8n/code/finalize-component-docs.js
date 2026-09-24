@@ -1,5 +1,5 @@
-const WORKFLOW_VERSION = 'ssot-v6';
-const RENDERER_VERSION = 'figma-tree-v4';
+const WORKFLOW_VERSION = 'ssot-v7';
+const RENDERER_VERSION = 'figma-tree-v5';
 const MCP_ENDPOINT = 'http://127.0.0.1:3101/mcp';
 // The done output of Loop Over Items contains the generated result of every iteration.
 const generatedItems = $input.all();
@@ -188,6 +188,11 @@ for (const source of sourceItems) {
       enforced: generated?.preview?.enforced === true,
       warning: generated?.preview?.warning || null,
     },
+    accessibility: {
+      spec: context.component?.accessibilitySpec || null,
+      audit: validation.checks?.accessibility || null,
+      reviewStatus: validation.checks?.accessibility?.reviewRequired ? 'review-required' : 'reviewed-in-code',
+    },
   };
 
   validComponents.push(componentName);
@@ -207,18 +212,21 @@ const branchName = `ai/tokens-update-${formatBranchTimestamp()}`;
 const previewWarnings = validComponents
   .map((componentName) => ({ componentName, warning: previousDocs.component[componentName]?._meta?.preview?.warning || null }))
   .filter((entry) => entry.warning);
+const accessibilityReviews = validComponents
+  .filter((componentName) => previousDocs.component[componentName]?._meta?.accessibility?.reviewStatus === 'review-required');
 
 return [
   {
     json: {
       mode: 'production',
-      message: previewWarnings.length
-        ? 'Validation MCP OK. Des apercus Figma sont a verifier dans Storybook avant la PR.'
+      message: previewWarnings.length || accessibilityReviews.length
+        ? 'Validation MCP OK. Revue visuelle et accessibilite a completer dans Storybook avant la PR.'
         : 'Validation MCP OK. Branche GitHub prete pour review Storybook.',
       updatedComponents: validComponents.length,
       validComponents,
       invalidComponents,
       previewWarnings,
+      accessibilityReviews,
       content: JSON.stringify(previousDocs, null, 2),
       contentBase64: Buffer.from(JSON.stringify(previousDocs, null, 2), 'utf-8').toString('base64'),
       owner: 'tjovy',

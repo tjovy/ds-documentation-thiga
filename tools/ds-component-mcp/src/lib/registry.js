@@ -49,6 +49,23 @@ function normalizeRenderRequirements(value) {
   };
 }
 
+function normalizeAccessibilitySpec(value, source) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const requirements = (Array.isArray(value.requirements) ? value.requirements : []).map((item) => ({
+    id: String(item?.id || '').trim(),
+    wcag: String(item?.wcag || '').trim(),
+    text: String(item?.text || '').trim(),
+  })).filter((item) => item.id && item.text);
+  const ids = requirements.map((item) => item.id);
+  if (ids.length !== new Set(ids).size) throw new Error(`Contrat accessibilite invalide (${source}): identifiants dupliques`);
+  return {
+    source,
+    requirements,
+    manualChecks: normalizeStringArray(value.manualChecks),
+    reviewRequired: true,
+  };
+}
+
 function normalizeDevContract(value, source) {
   if (!value || typeof value !== 'object') return null;
   const htmlTag = String(value.htmlTag || '').trim().toLowerCase();
@@ -65,6 +82,7 @@ function normalizeDevContract(value, source) {
     slots: normalizeStringArray(value.slots),
     usageRules: normalizeUsageRules(value.usageRules),
     accessibility: normalizeStringArray(value.accessibility),
+    accessibilitySpec: normalizeAccessibilitySpec(value.accessibilitySpec, source),
     renderRequirements: normalizeRenderRequirements(value.renderRequirements),
   };
 
@@ -76,6 +94,7 @@ function normalizeDevContract(value, source) {
     && !output.slots.length
     && !output.usageRules
     && !output.accessibility.length
+    && !output.accessibilitySpec
     && !output.renderRequirements
   ) {
     return null;
@@ -132,6 +151,7 @@ function applyDevContract(definition, devContract) {
   if (devContract.slots.length) next.slots = devContract.slots;
   if (devContract.usageRules) next.usageRules = devContract.usageRules;
   if (devContract.accessibility.length) next.accessibility = devContract.accessibility;
+  if (devContract.accessibilitySpec) next.accessibilitySpec = devContract.accessibilitySpec;
   if (devContract.renderRequirements) {
     next.renderRequirements = {
       mustInclude: [
@@ -191,6 +211,7 @@ function buildAutoDiscoveredDefinition(tokens, componentName, allowMissingTokenS
       dont: [],
     },
     accessibility: [],
+    accessibilitySpec: null,
     previewMatrix: {},
     renderRequirements: {
       mustInclude: [
@@ -397,10 +418,18 @@ function buildJsxBlueprint(definition) {
 export function loadRegistry(registryDir) {
   const componentsDir = path.join(registryDir, 'components');
   const files = fs.readdirSync(componentsDir).filter((file) => file.endsWith('.json'));
+  const accessibility = JSON.parse(fs.readFileSync(path.join(registryDir, 'accessibility-contracts.json'), 'utf8'));
+  const accessibilityTarget = String(accessibility.target || '').trim();
+  if (!accessibilityTarget) throw new Error('Cible du contrat accessibilite absente');
 
   return files.reduce((acc, file) => {
     const fullPath = path.join(componentsDir, file);
     const definition = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+    definition.accessibilitySpec = normalizeAccessibilitySpec(
+      accessibility.components?.[definition.name],
+      'registry:accessibility-contracts.json',
+    );
+    definition.accessibilityTarget = accessibilityTarget;
     acc[definition.name] = definition;
     return acc;
   }, {});
@@ -508,6 +537,15 @@ export function buildGenerationContext(registry, tokens, componentName, figmaCac
       states: definition.states || [],
       usageRules: definition.usageRules || { do: [], dont: [] },
       accessibility: definition.accessibility || [],
+      accessibilitySpec: {
+        target: definition.accessibilityTarget || registry.button?.accessibilityTarget || 'WCAG 2.2 AA — objectif de revue, pas attestation de conformité',
+        ...(definition.accessibilitySpec || {
+          source: 'missing-contract',
+          requirements: [],
+          manualChecks: ['Définir la sémantique, le nom accessible, le clavier, le focus et les états avant la production.'],
+          reviewRequired: true,
+        }),
+      },
       assetPath: definition.assetPath || null,
       previewMatrix: definition.previewMatrix || {},
       renderRequirements: definition.renderRequirements || null,

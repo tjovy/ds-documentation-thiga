@@ -1,5 +1,5 @@
-const WORKFLOW_VERSION = 'ssot-v6';
-const RENDERER_VERSION = 'figma-tree-v4';
+const WORKFLOW_VERSION = 'ssot-v7';
+const RENDERER_VERSION = 'figma-tree-v5';
 const MAX_COMPONENTS_PER_RUN = (() => {
   const raw = String($env.MAX_COMPONENTS_PER_RUN || '').trim();
   if (!raw) return Infinity;
@@ -234,6 +234,7 @@ function figmaSnapshotFromContext(context) {
       sizes: context.component?.sizes || [],
       states: context.component?.states || [],
       renderRequirements: context.component?.renderRequirements || null,
+      accessibilitySpec: context.component?.accessibilitySpec || null,
     },
   };
 }
@@ -376,6 +377,7 @@ try {
       componentTokenHash,
       referencedTokenHash,
       figmaHash,
+      accessibilitySpec: context.component?.accessibilitySpec || null,
     });
 
     const reasons = [];

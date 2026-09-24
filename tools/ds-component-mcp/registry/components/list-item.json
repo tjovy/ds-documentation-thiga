@@ -2,7 +2,8 @@
   "name": "listItem",
   "title": "List Item",
   "htmlTag": "div",
-  "role": "listitem",
+  "role": null,
+  "semanticHtmlKnown": false,
   "requiresFigma": true,
   "interactive": true,
   "summary": "Élément de liste Thiga avec deux densités et trois états.",
@@ -13,7 +14,7 @@
   "sizes": [],
   "states": ["default", "hover", "selected"],
   "usageRules": {"do": ["Utiliser dans une liste structurée."], "dont": ["Ne pas confondre selected et focus."]},
-  "accessibility": ["Exposer l’état selected avec aria-selected dans l’implémentation de production."],
+  "accessibility": ["Le pattern de liste ou de sélection doit être choisi explicitement. aria-selected ne s’applique pas à role=listitem ; ne pas déduire ce rôle de Figma."],
   "previewMatrix": {"axes": ["density", "state"], "stateAxis": "state"},
   "renderRequirements": {"mustInclude": ["Afficher les six combinaisons Density × State de Figma."], "forbiddenPatterns": ["Aucun état disabled absent de Figma."]},
   "requiredTokenPaths": []
