@@ -87,3 +87,5 @@ Variables d'environnement n8n nécessaires :
 - `OPENAI_MAX_REPAIR_TOKENS` : optionnel, défaut `1200`, utilisé une seule fois après un échec de validation.
 
 Le workflow n'envoie ni le Markdown historique ni le design Figma complet au modèle. L'empreinte `ssot-v9` inclut le contrat d’accessibilité et évite tout appel OpenAI lorsque les sources n'ont pas changé. Avec une limite par lot, les entrées de même empreinte déjà produites sur les branches `ai/*` récentes sont reprises dans le prochain `tokens-docs.json` : la dernière branche de revue cumule ainsi les composants des lots précédents. La finalisation échoue si la provenance du contrat MCP manque.
+
+Le node `Get review branches` utilise le même credential GitHub n8n que les autres nodes. Les fichiers publics de ces branches sont ensuite lus par leur SHA via `raw.githubusercontent.com`, ce qui évite la limite de 60 appels/h des lectures GitHub API anonymes pendant les lots. Aucun jeton n'est copié dans le code ou les variables d'environnement.

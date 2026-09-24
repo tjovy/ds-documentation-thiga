@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,6 +83,27 @@ const trigger = requireNode(nodes, "When clicking 'Execute workflow'");
 trigger.position = [-544, 48];
 const docsNode = requireNode(nodes, 'Get tokens-docs.json');
 const tokensNode = requireNode(nodes, 'Get tokens.json');
+let reviewBranches = nodes.find((node) => node.name === 'Get review branches');
+if (!reviewBranches) {
+  reviewBranches = {
+    id: randomUUID(),
+    name: 'Get review branches',
+    type: 'n8n-nodes-base.httpRequest',
+    typeVersion: 4.2,
+    position: [-208, 48],
+    parameters: {},
+  };
+  nodes.push(reviewBranches);
+}
+reviewBranches.parameters = {
+  method: 'GET',
+  url: 'https://api.github.com/repos/tjovy/ds-documentation-thiga/git/matching-refs/heads/ai/',
+  authentication: 'predefinedCredentialType',
+  nodeCredentialType: 'githubApi',
+  options: { response: { response: { responseFormat: 'text', outputPropertyName: 'refs' } } },
+};
+reviewBranches.credentials = { githubApi: { ...GITHUB_CREDENTIAL } };
+apiHeaders(reviewBranches);
 for (const node of [docsNode, tokensNode]) {
   node.parameters.owner = repositorySelector(GITHUB_OWNER, `https://github.com/${GITHUB_OWNER}`);
   node.parameters.repository = repositorySelector(
@@ -103,7 +125,9 @@ const createBranch = requireNode(nodes, 'Create docs branch');
 createBranch.parameters.jsonBody = '={{ { ref: "refs/heads/" + $("Finalize + Validate").first().json.branchName, sha: $("Finalize + Validate").first().json.baseSha } }}';
 
 connections["When clicking 'Execute workflow'"] = { main: [[{ node: 'Get source main ref', type: 'main', index: 0 }]] };
-connections['Get source main ref'] = { main: [[{ node: 'Get tokens-docs.json', type: 'main', index: 0 }]] };
+connections['Get source main ref'] = { main: [[{ node: 'Get review branches', type: 'main', index: 0 }]] };
+connections['Get review branches'] = { main: [[{ node: 'Get tokens-docs.json', type: 'main', index: 0 }]] };
+connections['Get tokens.json'] = { main: [[{ node: 'Filtrer les composants incomplets', type: 'main', index: 0 }]] };
 connections['Process One at a Time'] = {
   main: [
     [{ node: 'Finalize + Validate', type: 'main', index: 0 }],

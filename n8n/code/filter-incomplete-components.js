@@ -266,12 +266,13 @@ async function reviewedSourceHashes() {
   // so each subsequent run picks the next changed component instead of
   // repeatedly paying to regenerate the first one.
   try {
-    const refs = parseJsonResponse(await this.helpers.httpRequest({
-      method: 'GET',
-      url: 'https://api.github.com/repos/tjovy/ds-documentation-thiga/git/matching-refs/heads/ai/',
-      headers: { Accept: 'application/vnd.github+json' },
-      returnFullResponse: false,
-    }));
+    const refs = $('Get review branches').all()
+      .map((item) => item?.json)
+      .flatMap((entry) => {
+        if (typeof entry?.refs === 'string') return parseJsonResponse(entry.refs);
+        return Array.isArray(entry) ? entry : entry?.ref ? [entry] : [];
+      });
+    if (!refs.length) throw new Error('Aucune branche de revue reçue du node GitHub authentifié');
     const branches = (Array.isArray(refs) ? refs : [])
       .map((entry) => ({
         name: String(entry?.ref || '').replace('refs/heads/', ''),
@@ -286,15 +287,11 @@ async function reviewedSourceHashes() {
 
     for (const branch of branches) {
       try {
-        const content = parseJsonResponse(await this.helpers.httpRequest({
+        const branchDocs = parseJsonResponse(await this.helpers.httpRequest({
           method: 'GET',
-          url: `https://api.github.com/repos/tjovy/ds-documentation-thiga/contents/tokens-docs.json?ref=${encodeURIComponent(branch.sha)}`,
-          headers: { Accept: 'application/vnd.github+json' },
+          url: `https://raw.githubusercontent.com/tjovy/ds-documentation-thiga/${encodeURIComponent(branch.sha)}/tokens-docs.json`,
           returnFullResponse: false,
         }));
-        const encoded = String(content?.content || '').replace(/\s+/g, '');
-        if (!encoded) continue;
-        const branchDocs = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
         for (const [componentName, entry] of Object.entries(branchDocs?.component || {})) {
           if (entry?._meta?.workflowVersion !== WORKFLOW_VERSION || entry?._meta?.rendererVersion !== RENDERER_VERSION) continue;
           const sourceHash = entry?._meta?.sourceHash;
@@ -447,5 +444,5 @@ try {
     ? items.slice(0, MAX_COMPONENTS_PER_RUN)
     : items;
 } catch (error) {
-  return [{ json: { error: 'filter_failed', details: error.message } }];
+  return [{ json: { error: 'filter_failed', details: String(error?.message || error?.response?.status || error?.description || Object.keys(error || {}).join(',')) } }];
 }
