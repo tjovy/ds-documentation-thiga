@@ -90,6 +90,18 @@
 .zh-icon-details { margin-top: 16px; border-top: 1px solid #E5E7EB; padding-top: 12px; }
 .zh-icon-details summary { cursor: pointer; font-weight: 600; }
 .zh-icon-details .zh-live-preview { min-width: 0; }
+.do-icon-review-library { min-width: 0; }
+.do-icon-review-heading { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
+.do-icon-review-heading h2 { color: var(--text); font-size: 20px; margin: 0; }
+.do-icon-review-library > p { color: var(--text-3); font-size: 13px; line-height: 1.5; margin: 8px 0 18px; }
+.do-icon-review-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.do-icon-review-card { min-width: 0; }
+.do-icon-review-card.is-editing { grid-column: 1 / -1; }
+.do-icon-review-preview { align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; display: flex; justify-content: center; min-height: 100px; margin: 14px 0; overflow: hidden; }
+.do-icon-review-preview .zh-live-preview { min-width: 0; }
+.do-icon-review-details { border-top: 1px solid var(--border); padding-top: 12px; }
+.do-icon-review-details summary { color: var(--accent-ink); cursor: pointer; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.do-icon-review-details .zh-live-stack { margin-top: 14px; }
 /* ── AI Summary ── */
 .ds-ai-card { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 24px; margin-bottom: 16px; transition: border-color 0.15s ease; }
 .ds-ai-card:hover { border-color: #D1D5DB; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }

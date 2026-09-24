@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createTokenDocsPullRequest, listAIBranches, loadBranchDiff, saveTokenDocs } from '../utils/tokenDocsLoader';
-import { LiveMarkdownViewer, normalizeLiveCode } from '../utils/LiveMarkdownViewer';
+import { LiveMarkdownViewer, LiveMarkdownPreview, normalizeLiveCode } from '../utils/LiveMarkdownViewer';
 import { mergeEditableDocSections, parseEditableDocSections } from '../utils/docSections';
 import { hasXmlTags, xmlTagsToMarkdown } from '../utils/xmlTagsToMarkdown';
 import { splitCodePanes, reassembleCode } from '../utils/CodePanes.jsx';
@@ -26,6 +26,21 @@ const resolveSections = (diff) => {
 
 const isTopLevelComponentPath = (path = '') => /^component\.[^.]+$/.test(path);
 const getComponentNameFromPath = (path = '') => path.split('.').at(-1) || '';
+const getIconFigmaName = (diff, tokens = {}) => {
+  const name = getComponentNameFromPath(diff.path);
+  return tokens.component?.[name]?.$figma?.name || diff.modifiedMeta?.figmaMatchedKey || '';
+};
+const isUtilityIconDiff = (diff, tokens) => /^Icon\//i.test(getIconFigmaName(diff, tokens));
+const groupReviewDiffs = (diffs, tokens) => {
+  const icons = diffs.filter((diff) => isUtilityIconDiff(diff, tokens));
+  let iconsAdded = false;
+  return diffs.flatMap((diff) => {
+    if (!isUtilityIconDiff(diff, tokens)) return [{ type: 'component', diff }];
+    if (iconsAdded) return [];
+    iconsAdded = true;
+    return [{ type: 'iconLibrary', diffs: icons }];
+  });
+};
 
 const getBranchReviewLabel = (branchName = '') => {
   const match = branchName.match(/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})$/);
@@ -396,16 +411,20 @@ const buildReviewFromBranch = (branch, result, index) => {
   const date = parseBranchDate(branch.name);
   const allDiffs = result?.diffs || [];
   const componentDiffs = allDiffs.filter((diff) => isTopLevelComponentPath(diff.path)).sort((a, b) => a.path.localeCompare(b.path));
+  const tokens = result?.branchTokens || {};
+  const reviewItems = groupReviewDiffs(componentDiffs, tokens);
   const counts = allDiffs.reduce(
     (acc, diff) => {
       const type = classifyDiff(diff);
-      if (type === 'component') acc.components += 1;
+      if (type === 'component' && !isUtilityIconDiff(diff, tokens)) acc.components += 1;
       if (type === 'color') acc.colors += 1;
       if (type === 'style') acc.styles += 1;
       return acc;
     },
     { components: 0, colors: 0, styles: 0 }
   );
+  counts.iconLibraries = reviewItems.some((item) => item.type === 'iconLibrary') ? 1 : 0;
+  counts.icons = componentDiffs.filter((diff) => isUtilityIconDiff(diff, tokens)).length;
   const codeReady = componentDiffs.filter((diff) => resolveSections(diff).code.trim()).length;
 
   return {
@@ -418,9 +437,10 @@ const buildReviewFromBranch = (branch, result, index) => {
     status: componentDiffs.length === 0 ? 'empty' : codeReady === componentDiffs.length ? 'ready' : 'progress',
     counts,
     diffs: componentDiffs,
+    reviewItems,
     allDiffs,
     fullBranchDocs: result?.fullBranchDocs || {},
-    tokens: result?.branchTokens || {},
+    tokens,
     variablesCss: result?.branchVariablesCss || '',
     sourceRef: result?.sourceRef || branch.name,
     days: date ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000)) : null,
@@ -866,8 +886,9 @@ const AIEditor = () => {
               date: parseBranchDate(branch.name),
               author: 'ai',
               status: 'error',
-              counts: { components: 0, colors: 0, styles: 0 },
+              counts: { components: 0, iconLibraries: 0, icons: 0, colors: 0, styles: 0 },
               diffs: [],
+              reviewItems: [],
               allDiffs: [],
               fullBranchDocs: {},
             };
@@ -895,7 +916,7 @@ const AIEditor = () => {
   const kpis = useMemo(() => {
     const totals = reviews.reduce(
       (acc, review) => {
-        acc.components += review.counts.components;
+        acc.components += review.counts.components + review.counts.iconLibraries;
         acc.styles += review.counts.colors + review.counts.styles;
         acc.ready += review.status === 'ready' ? 1 : 0;
         acc.blocked += review.status === 'error' ? 1 : 0;
@@ -906,7 +927,7 @@ const AIEditor = () => {
 
     return [
       { id: 'all', label: 'Reviews à valider', value: reviews.length, delta: reviews.length, icon: 'Check', priority: true },
-      { id: 'components', label: 'Composants à vérifier', value: totals.components, delta: totals.components, icon: 'Cube' },
+      { id: 'components', label: 'Composants et librairies à vérifier', value: totals.components, delta: totals.components, icon: 'Cube' },
       { id: 'styles', label: 'Couleurs/Styles à valider', value: totals.styles, delta: totals.styles, icon: 'Palette' },
       { id: 'ready', label: 'Ready to dev', value: totals.ready, delta: totals.ready - totals.blocked, icon: 'Code' },
     ];
@@ -918,7 +939,7 @@ const AIEditor = () => {
       const matchesSearch = !normalizedSearch || `${review.name} ${review.id} ${review.branch}`.toLowerCase().includes(normalizedSearch);
       const matchesFilter =
         filter === 'all' ||
-        (filter === 'components' && review.counts.components > 0) ||
+        (filter === 'components' && review.counts.components + review.counts.iconLibraries > 0) ||
         (filter === 'styles' && review.counts.colors + review.counts.styles > 0) ||
         (filter === 'ready' && review.status === 'ready') ||
         review.status === filter;
@@ -1177,6 +1198,7 @@ const AIEditor = () => {
                       <td>
                         <span className="do-elts">
                           {review.counts.components > 0 && <span className="do-elt c">{review.counts.components} composants</span>}
+                          {review.counts.iconLibraries > 0 && <span className="do-elt c">Utility Icons · {review.counts.icons} icônes</span>}
                           {review.counts.colors > 0 && <span className="do-elt k">{review.counts.colors} couleurs</span>}
                           {review.counts.styles > 0 && <span className="do-elt s">{review.counts.styles} styles</span>}
                           {review.allDiffs.length === 0 && <span className="do-elt s">0 diff</span>}
@@ -1210,7 +1232,7 @@ const AIEditor = () => {
                   <div>
                     <div className="do-card-title" style={{ marginBottom: 8 }}>
                       <span className="do-card-title-text">Validation de {selectedReview.name}</span>
-                      <span className="do-title-count">{selectedReview.diffs.length} composant(s)</span>
+                      <span className="do-title-count">{selectedReview.counts.components} composant(s) · {selectedReview.counts.iconLibraries} librairie(s) d’icônes</span>
                     </div>
                     <div className="do-page-sub">{selectedReview.label}</div>
                   </div>
@@ -1236,14 +1258,15 @@ const AIEditor = () => {
               {selectedReview.diffs.length === 0 ? (
                 <div className="zh-ai-state zh-ai-state-muted">Aucun composant top-level à relire dans cette branche.</div>
               ) : (
-                selectedReview.diffs.map((diff) => {
+                selectedReview.reviewItems.map((item) => {
+                  const renderDiff = (diff, isIcon = false) => {
                   const draftPreviewSections = editingPath === diff.path ? { ...draftSections, code: reassembleCode(draftCodePanes) } : null;
 
                   return (
-                    <div key={`${selectedReview.branch}-${diff.path}`} className="zh-panel">
+                    <div key={`${selectedReview.branch}-${diff.path}`} className={isIcon ? `zh-panel do-icon-review-card${editingPath === diff.path ? ' is-editing' : ''}` : 'zh-panel'}>
                       <div className="zh-ai-card-head">
                         <div className="zh-ai-card-title-wrap">
-                          <strong className="zh-ai-path">{diff.path}</strong>
+                          <strong className="zh-ai-path">{isIcon ? getIconFigmaName(diff, selectedReview.tokens).replace(/^Icon\//i, '') : diff.path}</strong>
                           {getPreviewWarning(diff) && <span className="zh-figma-review-warning-badge">Aperçu à vérifier</span>}
                         </div>
                         {editingPath !== diff.path && (
@@ -1252,6 +1275,11 @@ const AIEditor = () => {
                           </button>
                         )}
                       </div>
+                      {isIcon && (
+                        <div className="do-icon-review-preview">
+                          <LiveMarkdownPreview content={diff.modified} />
+                        </div>
+                      )}
 
                       {editingPath === diff.path ? (
                         <div className="zh-edit-panel zh-edit-panel-inline">
@@ -1327,11 +1355,31 @@ const AIEditor = () => {
                             <button className="zh-btn-secondary" type="button" onClick={resetEditor}>Annuler</button>
                           </div>
                         </div>
+                      ) : isIcon ? (
+                        <details className="do-icon-review-details">
+                          <summary>Spécifications et code · {diff.path}</summary>
+                          <ComponentReviewPanel diff={diff} />
+                        </details>
                       ) : (
                         <ComponentReviewPanel diff={diff} />
                       )}
                     </div>
                   );
+                  };
+
+                  if (item.type === 'iconLibrary') {
+                    return (
+                      <section key={`${selectedReview.branch}-utility-icons`} className="zh-panel do-icon-review-library" aria-labelledby="do-utility-icons-title">
+                        <header className="do-icon-review-heading">
+                          <h2 id="do-utility-icons-title">Utility Icons</h2>
+                          <span className="do-title-count">{item.diffs.length} icône(s)</span>
+                        </header>
+                        <p>Une seule librairie à relire. Chaque icône conserve sa documentation et sa validation individuelles.</p>
+                        <div className="do-icon-review-grid">{item.diffs.map((diff) => renderDiff(diff, true))}</div>
+                      </section>
+                    );
+                  }
+                  return renderDiff(item.diff);
                 })
               )}
             </section>

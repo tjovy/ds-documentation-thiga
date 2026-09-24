@@ -74,7 +74,7 @@ Les composants du fichier Thiga ont des contrats MCP dédiés :
 - List Item : densités `comfortable`, `compact` ; états `default`, `hover`, `selected`
 - Icônes : `arrowRight`, `check`, `more`
 
-Dans Storybook, ces icônes sont regroupées sous une seule entrée **Utility Icons** : une galerie montre leurs aperçus JSX issus de `tokens-docs.json`, avec les spécifications et le code de chacune dans un volet dépliable. Les entrées JSON restent séparées pour préserver les références Figma et la régénération ciblée n8n. Toute nouvelle entrée dont le nom Figma commence par `Icon/` rejoint automatiquement cette librairie.
+Dans Storybook, ces icônes sont regroupées sous une seule entrée **Utility Icons** : une galerie montre leurs aperçus JSX issus de `tokens-docs.json`, avec les spécifications et le code de chacune dans un volet dépliable. La revue **Design Ops / AI Token Editor** les présente également dans un seul panneau « Utility Icons », avec un aperçu et une édition par icône. Les entrées JSON restent séparées pour préserver les références Figma et la régénération ciblée n8n. Toute nouvelle entrée dont le nom Figma commence par `Icon/` rejoint automatiquement cette librairie.
 
 Les nouveaux composants sont auto-detectes depuis l'inventaire Figma complet :
 
