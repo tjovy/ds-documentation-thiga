@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 'ssot-v8';
+const WORKFLOW_VERSION = 'ssot-v9';
 const RENDERER_VERSION = 'figma-tree-v5';
 const MCP_ENDPOINT = 'http://127.0.0.1:3101/mcp';
 // The done output of Loop Over Items contains the generated result of every iteration.
@@ -100,7 +100,7 @@ async function callMcpTool(name, args) {
 }
 
 function toContextPayload(raw) {
-  return raw?.json?.mcpContext ?? raw?.json?.structuredContent ?? raw?.json?.content ?? raw?.json ?? {};
+  return raw?.mcpContext ?? raw?.json?.mcpContext ?? raw?.structuredContent ?? raw?.json?.structuredContent ?? raw?.json ?? raw ?? {};
 }
 
 const previousDocs = JSON.parse(JSON.stringify(sourceItems[0]?.json?.previousDocs || {}));
@@ -132,6 +132,9 @@ for (const source of sourceItems) {
   const generated = componentName ? generatedByComponent.get(componentName) : null;
   const markdown = sanitizeMarkdown(getModelText(generated));
   const context = toContextPayload(componentName ? contextByComponent.get(componentName) : null);
+  if (!context.component?.accessibilitySpec?.source) {
+    throw new Error(`Contrat accessibilite MCP absent pour ${componentName}`);
+  }
   const comparison = sourceItem.sourceComparison || {};
   const referencedTokenPaths = comparison.referencedTokenPaths || [];
   const componentTokenHash = comparison.componentTokenHash;

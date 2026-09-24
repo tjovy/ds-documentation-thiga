@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 'ssot-v8';
+const WORKFLOW_VERSION = 'ssot-v9';
 const RENDERER_VERSION = 'figma-tree-v5';
 const MAX_COMPONENTS_PER_RUN = (() => {
   const raw = String($env.MAX_COMPONENTS_PER_RUN || '').trim();
