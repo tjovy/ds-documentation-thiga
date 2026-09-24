@@ -272,7 +272,7 @@ async function reviewedSourceHashes() {
         if (typeof entry?.refs === 'string') return parseJsonResponse(entry.refs);
         return Array.isArray(entry) ? entry : entry?.ref ? [entry] : [];
       });
-    if (!refs.length) throw new Error('Aucune branche de revue reçue du node GitHub authentifié');
+    if (!refs.length) return { sourceHashes: new Set(), figmaHashes: new Set(), reviewEntries: new Map() };
     const branches = (Array.isArray(refs) ? refs : [])
       .map((entry) => ({
         name: String(entry?.ref || '').replace('refs/heads/', ''),
@@ -310,14 +310,13 @@ async function reviewedSourceHashes() {
           }
         }
       } catch (error) {
-        console.warn(`Branche de revue ignoree (${branch.name}): ${error.message}`);
+        throw new Error(`Branche de revue illisible (${branch.name}): ${error?.message || error}`);
       }
     }
 
     return { sourceHashes, figmaHashes, reviewEntries };
   } catch (error) {
-    console.warn(`Impossible de lire les branches de revue: ${error.message}`);
-    return { sourceHashes: new Set(), figmaHashes: new Set(), reviewEntries: new Map() };
+    throw new Error(`Impossible de consolider les branches de revue: ${error?.message || error}`);
   }
 }
 

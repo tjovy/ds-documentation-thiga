@@ -103,6 +103,7 @@ reviewBranches.parameters = {
   options: { response: { response: { responseFormat: 'text', outputPropertyName: 'refs' } } },
 };
 reviewBranches.credentials = { githubApi: { ...GITHUB_CREDENTIAL } };
+reviewBranches.alwaysOutputData = true;
 apiHeaders(reviewBranches);
 for (const node of [docsNode, tokensNode]) {
   node.parameters.owner = repositorySelector(GITHUB_OWNER, `https://github.com/${GITHUB_OWNER}`);
